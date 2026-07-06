@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+*.log
+.venv/
+.tmp/
+.pip-cache/
+__pycache__/
+.pytest_cache/
+.pytest-tmp/
+.pytest-tmp*/
+pytest-tmp*/
+pytest-cache-files-*/
+*.egg-info/
+*.pyc
+*.sqlite

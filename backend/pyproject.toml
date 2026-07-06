@@ -1,0 +1,21 @@
+[project]
+name = "vimantra-backend"
+version = "1.0.0rc1"
+description = "Backend service for Vimantra AI Mission Planner."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115.6,<0.116.0",
+  "mavsdk>=3.0.0,<4.0.0",
+  "uvicorn[standard]>=0.34.0,<0.35.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28.1,<0.29.0",
+  "pytest>=8.3.4,<9.0.0"
+]
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider --basetemp=.pytest-tmp"
+testpaths = ["tests"]
+pythonpath = ["."]
