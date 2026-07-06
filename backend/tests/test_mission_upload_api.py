@@ -77,6 +77,40 @@ def test_upload_mission_calls_connected_drone_mission_plugin(
     assert fake_system.mission.upload_count == 2
 
 
+def test_upload_mission_returns_bad_request_when_validation_fails(
+    api_context: tuple[TestClient, FakeDroneSystem, DroneConnectionService],
+) -> None:
+    client, fake_system, drone_connection = api_context
+    drone_connection._system = fake_system
+    drone_connection._system_address = "udp://:14540"
+    drone_connection._connected = True
+    mission_id = client.post(
+        "/missions",
+        json={
+            "name": "Invalid Upload Mission",
+            "waypoints": [
+                {
+                    "sequence": 1,
+                    "latitude": 19.076,
+                    "longitude": 72.8777,
+                    "altitude_meters": 1,
+                    "speed_meters_per_second": 8,
+                }
+            ],
+        },
+    ).json()["id"]
+
+    response = client.post(f"/missions/{mission_id}/upload")
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["valid"] is False
+    assert {error["code"] for error in response.json()["detail"]["errors"]} == {
+        "TOO_FEW_WAYPOINTS",
+        "ALTITUDE_TOO_LOW",
+    }
+    assert fake_system.mission.upload_count == 0
+
+
 def create_payload() -> dict[str, object]:
     return {
         "name": "Upload API Mission",

@@ -7,6 +7,8 @@ from mavsdk.mission import MissionItem, MissionPlan
 from app.models.mission import MissionRecord, MissionUploadStatus, Waypoint
 from app.services.drone_connection import DroneConnectionService
 from app.services.mission_storage import MissionStorage
+from mission.exceptions import MissionValidationError
+from mission.validator import MissionValidator
 
 
 class MissionPlugin(Protocol):
@@ -19,12 +21,18 @@ class MissionUploadService:
         self,
         mission_storage: MissionStorage,
         drone_connection: DroneConnectionService,
+        mission_validator: MissionValidator | None = None,
     ) -> None:
         self._mission_storage = mission_storage
         self._drone_connection = drone_connection
+        self._mission_validator = mission_validator or MissionValidator()
 
     async def upload_mission(self, mission_id: int) -> MissionUploadStatus:
         mission = self._mission_storage.get_mission(mission_id)
+        validation_result = self._mission_validator.validate(mission)
+        if not validation_result.valid:
+            raise MissionValidationError(validation_result)
+
         system = self._drone_connection.get_connected_system()
         mission_plan = MissionPlan(
             [_to_mavsdk_mission_item(waypoint) for waypoint in mission.waypoints]

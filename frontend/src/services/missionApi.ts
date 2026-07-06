@@ -1,5 +1,6 @@
 import type {
   MissionRecord,
+  MissionValidationResult,
   MissionUploadStatus,
   Waypoint
 } from "../types/mission";
@@ -26,6 +27,22 @@ type ApiMissionUploadStatus = {
   uploaded: boolean;
   waypoint_count: number;
   message: string;
+};
+
+type ApiMissionValidationIssue = {
+  code: string;
+  waypoint: number | null;
+  message: string;
+};
+
+type ApiMissionValidationResult = {
+  valid: boolean;
+  errors: ApiMissionValidationIssue[];
+  warnings: ApiMissionValidationIssue[];
+  statistics: {
+    waypoints: number;
+    distance: number;
+  };
 };
 
 export async function saveMission(
@@ -83,12 +100,50 @@ export async function uploadMission(
   };
 }
 
+export async function validateMission(
+  name: string,
+  waypoints: Waypoint[]
+): Promise<MissionValidationResult> {
+  const response = await fetch(`${apiBaseUrl}/api/missions/validate`, {
+    body: JSON.stringify({
+      name,
+      waypoints: waypoints.map(toApiWaypoint)
+    }),
+    headers: {
+      "Content-Type": "application/json"
+    },
+    method: "POST"
+  });
+
+  if (!response.ok) {
+    throw new Error("Mission validation failed.");
+  }
+
+  return fromApiValidationResult(
+    (await response.json()) as ApiMissionValidationResult
+  );
+}
+
 async function parseMissionResponse(response: Response): Promise<MissionRecord> {
   if (!response.ok) {
     throw new Error("Mission request failed.");
   }
 
   return fromApiMission((await response.json()) as ApiMissionRecord);
+}
+
+function fromApiValidationResult(
+  result: ApiMissionValidationResult
+): MissionValidationResult {
+  return {
+    valid: result.valid,
+    errors: result.errors,
+    warnings: result.warnings,
+    statistics: {
+      waypoints: result.statistics.waypoints,
+      distance: result.statistics.distance
+    }
+  };
 }
 
 function toApiWaypoint(waypoint: Waypoint): ApiWaypoint {

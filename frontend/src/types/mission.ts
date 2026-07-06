@@ -21,3 +21,21 @@ export type MissionUploadStatus = {
   waypointCount: number;
   message: string;
 };
+
+export type MissionValidationIssue = {
+  code: string;
+  waypoint: number | null;
+  message: string;
+};
+
+export type MissionValidationStatistics = {
+  waypoints: number;
+  distance: number;
+};
+
+export type MissionValidationResult = {
+  valid: boolean;
+  errors: MissionValidationIssue[];
+  warnings: MissionValidationIssue[];
+  statistics: MissionValidationStatistics;
+};

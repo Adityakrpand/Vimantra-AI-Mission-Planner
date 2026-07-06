@@ -14,7 +14,8 @@ import {
   listMissions,
   loadMission,
   saveMission,
-  uploadMission
+  uploadMission,
+  validateMission
 } from "./services/missionApi";
 
 vi.mock("./services/droneApi", () => ({
@@ -31,7 +32,8 @@ vi.mock("./services/missionApi", () => ({
   listMissions: vi.fn(),
   loadMission: vi.fn(),
   saveMission: vi.fn(),
-  uploadMission: vi.fn()
+  uploadMission: vi.fn(),
+  validateMission: vi.fn()
 }));
 
 const mockedArmDrone = vi.mocked(armDrone);
@@ -45,6 +47,7 @@ const mockedListMissions = vi.mocked(listMissions);
 const mockedLoadMission = vi.mocked(loadMission);
 const mockedSaveMission = vi.mocked(saveMission);
 const mockedUploadMission = vi.mocked(uploadMission);
+const mockedValidateMission = vi.mocked(validateMission);
 
 describe("App", () => {
   beforeEach(() => {
@@ -77,6 +80,16 @@ describe("App", () => {
     mockedSaveMission.mockReset();
     mockedStartMission.mockReset();
     mockedUploadMission.mockReset();
+    mockedValidateMission.mockReset();
+    mockedValidateMission.mockResolvedValue({
+      valid: true,
+      errors: [],
+      warnings: [],
+      statistics: {
+        waypoints: 2,
+        distance: 1280.5
+      }
+    });
   });
 
   it("renders the ground control station layout", async () => {
@@ -93,9 +106,51 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Upload" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Validate Mission" })
+    ).toBeEnabled();
     expect(screen.getByRole("button", { name: "Arm" })).toBeDisabled();
     expect(await screen.findByText("No saved missions")).toBeInTheDocument();
     expect(screen.getAllByText("Mission Progress").length).toBeGreaterThan(0);
+  });
+
+  it("validates the current mission through the mission API", async () => {
+    render(<App />);
+    await screen.findByText("No saved missions");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add WP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Validate Mission" }));
+
+    expect(await screen.findByText("Mission Valid")).toBeInTheDocument();
+    expect(mockedValidateMission).toHaveBeenCalledOnce();
+  });
+
+  it("shows mission validation errors", async () => {
+    mockedValidateMission.mockResolvedValue({
+      valid: false,
+      errors: [
+        {
+          code: "ALTITUDE_TOO_LOW",
+          waypoint: 1,
+          message: "Altitude must be at least 5 meters."
+        }
+      ],
+      warnings: [],
+      statistics: {
+        waypoints: 1,
+        distance: 0
+      }
+    });
+
+    render(<App />);
+    await screen.findByText("No saved missions");
+
+    fireEvent.click(screen.getByRole("button", { name: "Validate Mission" }));
+
+    expect(await screen.findByText("Mission Invalid")).toBeInTheDocument();
+    expect(
+      screen.getByText("WP1: Altitude must be at least 5 meters.")
+    ).toBeInTheDocument();
   });
 
   it("renders telemetry from the backend snapshot", async () => {

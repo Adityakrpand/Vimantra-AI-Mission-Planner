@@ -11,6 +11,7 @@ Version 1.0 does not implement autonomous AI planning. AI mission planning is re
 - Persist missions in SQLite.
 - Connect to PX4 SITL through MAVSDK.
 - Upload missions to a connected drone system.
+- Validate missions before upload.
 - Arm, disarm, and start missions.
 - Monitor telemetry for position, altitude, speed, heading, battery, GPS fix, flight mode, and mission progress.
 - Verify the local backend-only workflow and the PX4 SITL workflow with repeatable scripts.
@@ -96,6 +97,18 @@ This repository follows:
 - Architecture Decision Records.
 - Python type hints and pytest coverage for backend behavior.
 - TypeScript, React Testing Library, and production builds for frontend behavior.
+
+## Mission Validation
+
+Every mission must pass the Mission Validation Engine before upload to PX4. The validator is independent from the upload service and is reusable for future AI-generated missions.
+
+Validation endpoint:
+
+```text
+POST /api/missions/validate
+```
+
+Validation checks include waypoint count, required mission name, required waypoint values, latitude/longitude ranges, configured altitude and speed limits, duplicated consecutive waypoints, and zero-distance missions. Warnings are returned separately and do not block upload.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [ARCHITECTURE.md](ARCHITECTURE.md), [RELEASE_PROCESS.md](RELEASE_PROCESS.md), and [docs/12_Developer_Guide/README.md](docs/12_Developer_Guide/README.md).
 

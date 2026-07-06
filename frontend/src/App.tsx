@@ -16,9 +16,14 @@ import {
   listMissions,
   loadMission,
   saveMission,
-  uploadMission
+  uploadMission,
+  validateMission
 } from "./services/missionApi";
-import type { MissionRecord, Waypoint } from "./types/mission";
+import type {
+  MissionRecord,
+  MissionValidationResult,
+  Waypoint
+} from "./types/mission";
 
 type TelemetryMetric = {
   label: string;
@@ -156,6 +161,8 @@ export function App() {
   const [statusMessage, setStatusMessage] = useState(
     "Mission storage ready"
   );
+  const [validationResult, setValidationResult] =
+    useState<MissionValidationResult | null>(null);
   const [droneStatus, setDroneStatus] = useState<DroneConnectionStatus>({
     connected: false,
     systemAddress: null,
@@ -171,6 +178,7 @@ export function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingMission, setIsLoadingMission] = useState(false);
   const [isUploadingMission, setIsUploadingMission] = useState(false);
+  const [isValidatingMission, setIsValidatingMission] = useState(false);
   const missionSummary = useMemo(
     () => calculateMissionSummary(waypoints),
     [waypoints]
@@ -273,6 +281,7 @@ export function App() {
   };
 
   const addWaypoint = () => {
+    setValidationResult(null);
     setWaypoints((currentWaypoints) => [
       ...currentWaypoints,
       createWaypoint(currentWaypoints.length)
@@ -311,6 +320,7 @@ export function App() {
       setMissionName(loadedMission.name);
       setWaypoints(loadedMission.waypoints);
       setSelectedMissionId(loadedMission.id);
+      setValidationResult(null);
       setStatusMessage(`Loaded mission ${loadedMission.name}.`);
     } catch {
       setStatusMessage("Mission load failed. Check backend connection.");
@@ -338,6 +348,19 @@ export function App() {
       setStatusMessage("Mission upload failed. Check drone connection.");
     } finally {
       setIsUploadingMission(false);
+    }
+  };
+
+  const handleValidateMission = async () => {
+    setIsValidatingMission(true);
+    try {
+      const result = await validateMission(missionName, waypoints);
+      setValidationResult(result);
+      setStatusMessage(result.valid ? "Mission valid." : "Mission invalid.");
+    } catch {
+      setStatusMessage("Mission validation failed. Check backend connection.");
+    } finally {
+      setIsValidatingMission(false);
     }
   };
 
@@ -410,6 +433,7 @@ export function App() {
   };
 
   const deleteWaypoint = (waypointId: string) => {
+    setValidationResult(null);
     setWaypoints((currentWaypoints) =>
       resequenceWaypoints(
         currentWaypoints.filter((waypoint) => waypoint.id !== waypointId)
@@ -422,6 +446,7 @@ export function App() {
     field: "altitudeMeters" | "speedMetersPerSecond",
     value: number
   ) => {
+    setValidationResult(null);
     const limits = {
       altitudeMeters: { minimum: 1, maximum: 500 },
       speedMetersPerSecond: { minimum: 1, maximum: 40 }
@@ -480,7 +505,10 @@ export function App() {
                 aria-label="Mission name"
                 className="mt-1 h-9 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 text-sm text-zinc-100 outline-none"
                 maxLength={120}
-                onChange={(event) => setMissionName(event.target.value)}
+                onChange={(event) => {
+                  setMissionName(event.target.value);
+                  setValidationResult(null);
+                }}
                 value={missionName}
               />
             </label>
@@ -561,17 +589,21 @@ export function App() {
                 onClick={() => {
                   setWaypoints([]);
                   setSelectedMissionId(null);
+                  setValidationResult(null);
                   setStatusMessage("Mission cleared.");
                 }}
               />
             </div>
-            <p
-              aria-live="polite"
-              className="max-w-xl truncate text-sm text-zinc-400"
-            >
-              {statusMessage}
-            </p>
+            <div aria-live="polite" className="max-w-xl text-sm">
+              <p className="truncate text-zinc-400">{statusMessage}</p>
+              <ValidationSummary result={validationResult} />
+            </div>
             <div className="flex gap-2">
+              <ControlButton
+                label={isValidatingMission ? "Validating" : "Validate Mission"}
+                disabled={isValidatingMission}
+                onClick={handleValidateMission}
+              />
               <ControlButton
                 label={isUploadingMission ? "Uploading" : "Upload"}
                 disabled={
@@ -773,6 +805,35 @@ function NumberField({
 
 function PanelTitle({ title }: { title: string }) {
   return <h2 className="text-sm font-semibold text-zinc-100">{title}</h2>;
+}
+
+function ValidationSummary({
+  result
+}: {
+  result: MissionValidationResult | null;
+}) {
+  if (result === null) {
+    return null;
+  }
+
+  const toneClass = result.valid ? "text-emerald-300" : "text-red-300";
+  const label = result.valid ? "Mission Valid" : "Mission Invalid";
+
+  return (
+    <div className="mt-1 max-h-24 overflow-y-auto">
+      <p className={`text-xs font-semibold ${toneClass}`}>{label}</p>
+      {result.errors.length > 0 && (
+        <ul className="mt-1 space-y-1 text-xs text-red-300">
+          {result.errors.map((error) => (
+            <li key={`${error.code}-${error.waypoint ?? "mission"}`}>
+              {error.waypoint === null ? "" : `WP${error.waypoint}: `}
+              {error.message}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function DataRow({ label, value }: TelemetryMetric) {

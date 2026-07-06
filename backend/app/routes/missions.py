@@ -6,8 +6,12 @@ from app.models.mission import MissionCreate, MissionRecord, MissionUploadStatus
 from app.services.drone_connection import DroneConnectionService, DroneNotConnectedError
 from app.services.mission_storage import MissionNotFoundError, MissionStorage
 from app.services.mission_upload import MissionUploadService
+from mission.exceptions import MissionValidationError
+from mission.validation_models import MissionValidationRequest, MissionValidationResult
+from mission.validator import MissionValidator
 
 router = APIRouter(prefix="/missions", tags=["missions"])
+api_router = APIRouter(prefix="/api/missions", tags=["mission validation"])
 
 
 @router.post("", response_model=MissionRecord, status_code=status.HTTP_201_CREATED)
@@ -66,6 +70,18 @@ async def upload_mission(
             status_code=status.HTTP_409_CONFLICT,
             detail="Connect to PX4 SITL before uploading a mission.",
         ) from error
+    except MissionValidationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error.result.model_dump(),
+        ) from error
+
+
+@api_router.post("/validate", response_model=MissionValidationResult)
+def validate_mission(
+    mission: MissionValidationRequest,
+) -> MissionValidationResult:
+    return MissionValidator().validate(mission)
 
 
 def _mission_not_found(mission_id: int) -> HTTPException:

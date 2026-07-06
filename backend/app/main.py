@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes.drone import router as drone_router
 from app.routes.health import router as health_router
+from app.routes.missions import api_router as mission_validation_router
 from app.routes.missions import router as missions_router
 
 
@@ -20,6 +21,7 @@ def create_app() -> FastAPI:
     )
     application.include_router(drone_router)
     application.include_router(health_router)
+    application.include_router(mission_validation_router)
     application.include_router(missions_router)
     return application
 

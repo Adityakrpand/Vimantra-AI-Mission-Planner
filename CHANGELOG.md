@@ -18,6 +18,10 @@ This project follows [Semantic Versioning](https://semver.org/) and uses release
 - PX4 SITL workflow verification script.
 - Startup scripts for backend, frontend, and combined local development.
 - Professional repository documentation, contribution guidance, release process, security policy, support policy, GitHub templates, workflows, and ADRs.
+- Mission Validation Engine with structured validation errors, warnings, and statistics.
+- Validation API at `POST /api/missions/validate`.
+- Upload-time mission validation gate before PX4 upload.
+- Frontend Validate Mission button with valid/invalid result display.
 
 ### Changed
 
