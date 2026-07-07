@@ -13,6 +13,7 @@ Version 1.0 does not implement autonomous AI planning. AI mission planning is re
 - Upload missions to a connected drone system.
 - Validate missions before upload.
 - Run pre-flight checks before mission upload and mission start.
+- Review mission analytics before upload and flight.
 - Arm, disarm, and start missions.
 - Monitor telemetry for position, altitude, speed, heading, battery, GPS fix, flight mode, and mission progress.
 - Verify the local backend-only workflow and the PX4 SITL workflow with repeatable scripts.
@@ -190,6 +191,12 @@ Key variables:
 - `VIMANTRA_PREFLIGHT_OPTIONAL_CHECKS_ENABLED`
 
 See [docs/07_Testing/PreFlight.md](docs/07_Testing/PreFlight.md).
+
+## Mission Analytics
+
+Mission analytics compute deterministic flight estimates for saved missions, including distance, estimated flight time, battery usage, altitude/speed statistics, climb/descent, turns, and warnings.
+
+See [docs/05_Analytics/Mission_Analytics.md](docs/05_Analytics/Mission_Analytics.md).
 
 Validation endpoint:
 

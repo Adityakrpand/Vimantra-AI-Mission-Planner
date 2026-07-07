@@ -24,6 +24,8 @@ def test_settings_load_default_values() -> None:
     assert settings.preflight_config().battery_warning_threshold_percent == 30
     assert settings.preflight_config().gps_minimum_satellites == 6
     assert settings.preflight_config().optional_checks_enabled is True
+    assert settings.mission_analytics_config().maximum_recommended_distance_meters == 5000
+    assert settings.mission_analytics_config().battery_warning_threshold_percent == 25
 
 
 def test_settings_load_environment_overrides(tmp_path: Path) -> None:
@@ -43,6 +45,11 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
                 "VIMANTRA_PREFLIGHT_BATTERY_WARNING_THRESHOLD_PERCENT=40",
                 "VIMANTRA_PREFLIGHT_GPS_MINIMUM_SATELLITES=8",
                 "VIMANTRA_PREFLIGHT_OPTIONAL_CHECKS_ENABLED=false",
+                "VIMANTRA_ANALYTICS_MAXIMUM_RECOMMENDED_DISTANCE_METERS=2500",
+                "VIMANTRA_ANALYTICS_BATTERY_WARNING_THRESHOLD_PERCENT=35",
+                "VIMANTRA_ANALYTICS_AVERAGE_SPEED_WARNING_METERS_PER_SECOND=10",
+                "VIMANTRA_ANALYTICS_MAXIMUM_RECOMMENDED_CLIMB_METERS=75",
+                "VIMANTRA_ANALYTICS_SHARP_TURN_WARNING_COUNT=3",
                 "VIMANTRA_CORS_ORIGINS=http://localhost:3000,http://localhost:5173",
             ]
         ),
@@ -63,6 +70,11 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
     assert settings.preflight_battery_warning_threshold_percent == 40
     assert settings.preflight_gps_minimum_satellites == 8
     assert settings.preflight_optional_checks_enabled is False
+    assert settings.analytics_maximum_recommended_distance_meters == 2500
+    assert settings.analytics_battery_warning_threshold_percent == 35
+    assert settings.analytics_average_speed_warning_meters_per_second == 10
+    assert settings.analytics_maximum_recommended_climb_meters == 75
+    assert settings.analytics_sharp_turn_warning_count == 3
     assert settings.cors_origins == ["http://localhost:3000", "http://localhost:5173"]
 
 
@@ -79,6 +91,11 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
         ("VIMANTRA_DATABASE_PATH", ""),
         ("VIMANTRA_PREFLIGHT_BATTERY_WARNING_THRESHOLD_PERCENT", "101"),
         ("VIMANTRA_PREFLIGHT_GPS_MINIMUM_SATELLITES", "0"),
+        ("VIMANTRA_ANALYTICS_MAXIMUM_RECOMMENDED_DISTANCE_METERS", "0"),
+        ("VIMANTRA_ANALYTICS_BATTERY_WARNING_THRESHOLD_PERCENT", "101"),
+        ("VIMANTRA_ANALYTICS_AVERAGE_SPEED_WARNING_METERS_PER_SECOND", "0"),
+        ("VIMANTRA_ANALYTICS_MAXIMUM_RECOMMENDED_CLIMB_METERS", "0"),
+        ("VIMANTRA_ANALYTICS_SHARP_TURN_WARNING_COUNT", "-1"),
     ],
 )
 def test_settings_reject_invalid_configuration(

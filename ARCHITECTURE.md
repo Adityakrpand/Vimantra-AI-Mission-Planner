@@ -36,9 +36,12 @@ Primary backend responsibilities:
 - Health reporting.
 - Mission CRUD.
 - Mission upload to MAVSDK.
+- Mission analytics and flight estimation.
 - Drone connection lifecycle.
 - Drone arm, disarm, and mission start actions.
 - Telemetry snapshot collection.
+
+Mission analytics live in `backend/analytics/` and remain independent from validation, pre-flight checks, and future AI modules. The analytics service computes deterministic estimates and warnings from saved mission geometry and waypoint metadata.
 
 ### Database
 

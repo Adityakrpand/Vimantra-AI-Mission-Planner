@@ -2,10 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.dependencies import (
     get_app_settings,
+    get_mission_analytics_service,
     get_mission_storage,
     get_mission_validator,
     get_preflight_service,
 )
+from analytics.models import MissionAnalyticsResult
+from analytics.service import MissionAnalyticsService
 from app.dependencies import get_drone_connection_service
 from app.models.api import ApiResponse, DeleteResult, api_success
 from app.models.mission import MissionCreate, MissionRecord, MissionUploadStatus
@@ -136,6 +139,21 @@ async def run_preflight(
         mission_loaded=True,
     )
     return api_success(request, result)
+
+
+@router.get("/{mission_id}/analytics", response_model=ApiResponse[MissionAnalyticsResult])
+def get_mission_analytics(
+    request: Request,
+    mission_id: int,
+    storage: MissionStorage = Depends(get_mission_storage),
+    analytics_service: MissionAnalyticsService = Depends(get_mission_analytics_service),
+) -> ApiResponse[MissionAnalyticsResult]:
+    try:
+        mission = storage.get_mission(mission_id)
+    except MissionNotFoundError as error:
+        raise _mission_not_found(error.mission_id) from error
+
+    return api_success(request, analytics_service.generate(mission))
 
 
 @api_router.post("/validate", response_model=ApiResponse[MissionValidationResult])

@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from analytics.models import MissionAnalyticsConfig
 from config import defaults
 from config.environment import RuntimeEnvironment
 from config.validation import (
@@ -95,6 +96,21 @@ class AppSettings(BaseSettings):
     )
     preflight_optional_checks_enabled: bool = Field(
         default=defaults.DEFAULT_PREFLIGHT_OPTIONAL_CHECKS_ENABLED
+    )
+    analytics_maximum_recommended_distance_meters: float = Field(
+        default=defaults.DEFAULT_ANALYTICS_MAXIMUM_RECOMMENDED_DISTANCE_METERS
+    )
+    analytics_battery_warning_threshold_percent: float = Field(
+        default=defaults.DEFAULT_ANALYTICS_BATTERY_WARNING_THRESHOLD_PERCENT
+    )
+    analytics_average_speed_warning_meters_per_second: float = Field(
+        default=defaults.DEFAULT_ANALYTICS_AVERAGE_SPEED_WARNING_METERS_PER_SECOND
+    )
+    analytics_maximum_recommended_climb_meters: float = Field(
+        default=defaults.DEFAULT_ANALYTICS_MAXIMUM_RECOMMENDED_CLIMB_METERS
+    )
+    analytics_sharp_turn_warning_count: int = Field(
+        default=defaults.DEFAULT_ANALYTICS_SHARP_TURN_WARNING_COUNT
     )
 
     @field_validator("env", mode="before")
@@ -210,6 +226,27 @@ class AppSettings(BaseSettings):
             raise ValueError(
                 "VIMANTRA_PREFLIGHT_GPS_MINIMUM_SATELLITES must be greater than zero."
             )
+        validate_positive(
+            self.analytics_maximum_recommended_distance_meters,
+            "VIMANTRA_ANALYTICS_MAXIMUM_RECOMMENDED_DISTANCE_METERS",
+        )
+        if not 0 <= self.analytics_battery_warning_threshold_percent <= 100:
+            raise ValueError(
+                "VIMANTRA_ANALYTICS_BATTERY_WARNING_THRESHOLD_PERCENT must be "
+                "between 0 and 100."
+            )
+        validate_positive(
+            self.analytics_average_speed_warning_meters_per_second,
+            "VIMANTRA_ANALYTICS_AVERAGE_SPEED_WARNING_METERS_PER_SECOND",
+        )
+        validate_positive(
+            self.analytics_maximum_recommended_climb_meters,
+            "VIMANTRA_ANALYTICS_MAXIMUM_RECOMMENDED_CLIMB_METERS",
+        )
+        if self.analytics_sharp_turn_warning_count < 0:
+            raise ValueError(
+                "VIMANTRA_ANALYTICS_SHARP_TURN_WARNING_COUNT cannot be negative."
+            )
 
         return self
 
@@ -249,6 +286,23 @@ class AppSettings(BaseSettings):
             ),
             gps_minimum_satellites=self.preflight_gps_minimum_satellites,
             optional_checks_enabled=self.preflight_optional_checks_enabled,
+        )
+
+    def mission_analytics_config(self) -> MissionAnalyticsConfig:
+        return MissionAnalyticsConfig(
+            maximum_recommended_distance_meters=(
+                self.analytics_maximum_recommended_distance_meters
+            ),
+            battery_warning_threshold_percent=(
+                self.analytics_battery_warning_threshold_percent
+            ),
+            average_speed_warning_meters_per_second=(
+                self.analytics_average_speed_warning_meters_per_second
+            ),
+            maximum_recommended_climb_meters=(
+                self.analytics_maximum_recommended_climb_meters
+            ),
+            sharp_turn_warning_count=self.analytics_sharp_turn_warning_count,
         )
 
 

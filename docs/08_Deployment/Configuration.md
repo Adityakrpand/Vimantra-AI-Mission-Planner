@@ -42,6 +42,11 @@ Real `.env` files are ignored by Git. Commit only `*.example` files.
 | `VIMANTRA_PREFLIGHT_BATTERY_WARNING_THRESHOLD_PERCENT` | `30` | Optional pre-flight battery warning threshold |
 | `VIMANTRA_PREFLIGHT_GPS_MINIMUM_SATELLITES` | `6` | Optional pre-flight strong GPS satellite threshold |
 | `VIMANTRA_PREFLIGHT_OPTIONAL_CHECKS_ENABLED` | `true` | Enables optional pre-flight warning checks |
+| `VIMANTRA_ANALYTICS_MAXIMUM_RECOMMENDED_DISTANCE_METERS` | `5000` | Analytics warning threshold for mission distance |
+| `VIMANTRA_ANALYTICS_BATTERY_WARNING_THRESHOLD_PERCENT` | `25` | Analytics warning threshold for estimated battery remaining |
+| `VIMANTRA_ANALYTICS_AVERAGE_SPEED_WARNING_METERS_PER_SECOND` | `12` | Analytics warning threshold for average speed |
+| `VIMANTRA_ANALYTICS_MAXIMUM_RECOMMENDED_CLIMB_METERS` | `100` | Analytics warning threshold for total climb |
+| `VIMANTRA_ANALYTICS_SHARP_TURN_WARNING_COUNT` | `5` | Analytics warning threshold for sharp turn count |
 
 ## Frontend Variables
 
@@ -55,7 +60,7 @@ Real `.env` files are ignored by Git. Commit only `*.example` files.
 2. The backend loads `AppSettings`.
 3. Settings validation runs.
 4. Invalid settings stop startup immediately.
-5. Valid settings configure CORS, database path, drone defaults, mission validation, pre-flight checks, telemetry timeout, and upload timeout.
+5. Valid settings configure CORS, database path, drone defaults, mission validation, pre-flight checks, mission analytics, telemetry timeout, and upload timeout.
 
 ## Best Practices
 

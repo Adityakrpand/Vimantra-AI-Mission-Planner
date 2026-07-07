@@ -13,6 +13,7 @@ import {
   type DroneTelemetrySnapshot
 } from "./services/droneApi";
 import {
+  getMissionAnalytics,
   listMissions,
   loadMission,
   runPreFlight,
@@ -21,6 +22,7 @@ import {
   validateMission
 } from "./services/missionApi";
 import type {
+  MissionAnalyticsResult,
   MissionRecord,
   PreFlightResult,
   MissionValidationResult,
@@ -80,6 +82,9 @@ const formatDistance = (distanceKilometers: number) =>
   `${distanceKilometers.toFixed(2)} km`;
 const formatEstimatedTime = (minutes: number | null) =>
   minutes === null ? "--" : `${Math.ceil(minutes)} min`;
+const formatSeconds = (seconds: number) => `${Math.ceil(seconds / 60)} min`;
+const formatMeters = (meters: number) =>
+  meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${meters.toFixed(0)} m`;
 
 const createWaypoint = (index: number): Waypoint => {
   const position =
@@ -169,6 +174,8 @@ export function App() {
     useState<MissionValidationResult | null>(null);
   const [preFlightResult, setPreFlightResult] =
     useState<PreFlightResult | null>(null);
+  const [analyticsResult, setAnalyticsResult] =
+    useState<MissionAnalyticsResult | null>(null);
   const [droneStatus, setDroneStatus] = useState<DroneConnectionStatus>({
     connected: false,
     systemAddress: null,
@@ -290,6 +297,7 @@ export function App() {
   const addWaypoint = () => {
     setValidationResult(null);
     setPreFlightResult(null);
+    setAnalyticsResult(null);
     setWaypoints((currentWaypoints) => [
       ...currentWaypoints,
       createWaypoint(currentWaypoints.length)
@@ -308,6 +316,7 @@ export function App() {
       setMissionName(savedMission.name);
       setSelectedMissionId(savedMission.id);
       setPreFlightResult(null);
+      await refreshMissionAnalytics(savedMission.id);
       setStatusMessage(`Saved mission ${savedMission.name}.`);
       await refreshSavedMissions();
     } catch {
@@ -331,6 +340,7 @@ export function App() {
       setSelectedMissionId(loadedMission.id);
       setValidationResult(null);
       setPreFlightResult(null);
+      await refreshMissionAnalytics(loadedMission.id);
       setStatusMessage(`Loaded mission ${loadedMission.name}.`);
     } catch {
       setStatusMessage("Mission load failed. Check backend connection.");
@@ -380,6 +390,14 @@ export function App() {
       setStatusMessage("Pre-flight check failed. Check drone and telemetry.");
     } finally {
       setIsRunningPreFlight(false);
+    }
+  };
+
+  const refreshMissionAnalytics = async (missionId: number) => {
+    try {
+      setAnalyticsResult(await getMissionAnalytics(missionId));
+    } catch {
+      setAnalyticsResult(null);
     }
   };
 
@@ -467,6 +485,7 @@ export function App() {
   const deleteWaypoint = (waypointId: string) => {
     setValidationResult(null);
     setPreFlightResult(null);
+    setAnalyticsResult(null);
     setWaypoints((currentWaypoints) =>
       resequenceWaypoints(
         currentWaypoints.filter((waypoint) => waypoint.id !== waypointId)
@@ -481,6 +500,7 @@ export function App() {
   ) => {
     setValidationResult(null);
     setPreFlightResult(null);
+    setAnalyticsResult(null);
     const limits = {
       altitudeMeters: { minimum: 1, maximum: 500 },
       speedMetersPerSecond: { minimum: 1, maximum: 40 }
@@ -543,6 +563,7 @@ export function App() {
                   setMissionName(event.target.value);
                   setValidationResult(null);
                   setPreFlightResult(null);
+                  setAnalyticsResult(null);
                 }}
                 value={missionName}
               />
@@ -560,6 +581,11 @@ export function App() {
                 selectedMissionId={selectedMissionId}
                 savedMissions={savedMissions}
               />
+            </div>
+
+            <div className="mt-6">
+              <PanelTitle title="Mission Analytics" />
+              <MissionAnalyticsPanel result={analyticsResult} />
             </div>
 
             <div className="mt-6">
@@ -730,6 +756,68 @@ function MissionList({
           </span>
         </button>
       ))}
+    </div>
+  );
+}
+
+function MissionAnalyticsPanel({
+  result
+}: {
+  result: MissionAnalyticsResult | null;
+}) {
+  if (result === null) {
+    return (
+      <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">
+        Save or load a mission
+      </div>
+    );
+  }
+
+  const rows = [
+    {
+      label: "Distance",
+      value: formatMeters(result.summary.distance_meters)
+    },
+    {
+      label: "Flight Time",
+      value: formatSeconds(result.summary.estimated_flight_time_seconds)
+    },
+    {
+      label: "Battery Usage",
+      value: `${result.summary.estimated_battery_usage_percent.toFixed(1)}%`
+    },
+    {
+      label: "Battery Left",
+      value: `${result.summary.estimated_battery_remaining_percent.toFixed(1)}%`
+    },
+    {
+      label: "Waypoints",
+      value: String(result.summary.waypoint_count)
+    },
+    {
+      label: "Avg Speed",
+      value: `${result.statistics.average_speed_meters_per_second.toFixed(1)} m/s`
+    },
+    {
+      label: "Max Altitude",
+      value: `${result.statistics.maximum_altitude_meters.toFixed(0)} m`
+    }
+  ];
+
+  return (
+    <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-900 p-3">
+      <div className="space-y-1">
+        {rows.map((row) => (
+          <DataRow key={row.label} label={row.label} value={row.value} />
+        ))}
+      </div>
+      {result.warnings.length > 0 && (
+        <ul className="mt-3 space-y-1 text-xs text-amber-300">
+          {result.warnings.map((warning) => (
+            <li key={warning.code}>{warning.message}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

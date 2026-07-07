@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from analytics.service import MissionAnalyticsService
 from app.services.drone_connection import DroneConnectionService
 from app.services.mission_storage import MissionStorage
 from config.settings import AppSettings, get_settings
@@ -27,6 +28,11 @@ def get_mission_validator() -> MissionValidator:
 @lru_cache
 def get_preflight_service() -> PreFlightService:
     return PreFlightService(get_settings().preflight_config())
+
+
+@lru_cache
+def get_mission_analytics_service() -> MissionAnalyticsService:
+    return MissionAnalyticsService(get_settings().mission_analytics_config())
 
 
 def get_app_settings() -> AppSettings:

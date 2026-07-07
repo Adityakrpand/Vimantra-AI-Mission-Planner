@@ -1,4 +1,5 @@
 import type {
+  MissionAnalyticsResult,
   MissionRecord,
   MissionValidationResult,
   MissionUploadStatus,
@@ -132,6 +133,25 @@ export async function runPreFlight(
   }
 
   return parseApiResponse<PreFlightResult>(response, "Pre-flight check failed.");
+}
+
+export async function getMissionAnalytics(
+  missionId: number
+): Promise<MissionAnalyticsResult> {
+  const response = await fetch(`${apiBaseUrl}/missions/${missionId}/analytics`);
+
+  if (!response.ok) {
+    appLogger.apiRequestFailure("Mission analytics request failed.", {
+      missionId,
+      status: response.status
+    });
+    throw new Error("Mission analytics request failed.");
+  }
+
+  return parseApiResponse<MissionAnalyticsResult>(
+    response,
+    "Mission analytics request failed."
+  );
 }
 
 export async function validateMission(

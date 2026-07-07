@@ -11,6 +11,7 @@ import {
   startMission
 } from "./services/droneApi";
 import {
+  getMissionAnalytics,
   listMissions,
   loadMission,
   runPreFlight,
@@ -30,6 +31,7 @@ vi.mock("./services/droneApi", () => ({
 }));
 
 vi.mock("./services/missionApi", () => ({
+  getMissionAnalytics: vi.fn(),
   listMissions: vi.fn(),
   loadMission: vi.fn(),
   runPreFlight: vi.fn(),
@@ -45,6 +47,7 @@ const mockedDisarmDrone = vi.mocked(disarmDrone);
 const mockedGetDroneTelemetry = vi.mocked(getDroneTelemetry);
 const mockedGetDroneStatus = vi.mocked(getDroneStatus);
 const mockedStartMission = vi.mocked(startMission);
+const mockedGetMissionAnalytics = vi.mocked(getMissionAnalytics);
 const mockedListMissions = vi.mocked(listMissions);
 const mockedLoadMission = vi.mocked(loadMission);
 const mockedRunPreFlight = vi.mocked(runPreFlight);
@@ -79,6 +82,29 @@ describe("App", () => {
       connected: false,
       systemAddress: null,
       message: "Drone disconnected."
+    });
+    mockedGetMissionAnalytics.mockReset();
+    mockedGetMissionAnalytics.mockResolvedValue({
+      summary: {
+        distance_meters: 1280.5,
+        estimated_flight_time_seconds: 160,
+        estimated_battery_usage_percent: 8.4,
+        estimated_battery_remaining_percent: 91.6,
+        waypoint_count: 2
+      },
+      statistics: {
+        maximum_altitude_meters: 90,
+        minimum_altitude_meters: 80,
+        average_altitude_meters: 85,
+        average_speed_meters_per_second: 8,
+        maximum_speed_meters_per_second: 9,
+        total_climb_meters: 10,
+        total_descent_meters: 0,
+        turn_count: 0,
+        longest_leg_distance_meters: 1280.5,
+        shortest_leg_distance_meters: 1280.5
+      },
+      warnings: []
     });
     mockedListMissions.mockResolvedValue([]);
     mockedLoadMission.mockReset();
@@ -357,6 +383,9 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText("Saved mission Untitled.")).toBeInTheDocument();
+    expect(await screen.findByText("Battery Usage")).toBeInTheDocument();
+    expect(screen.getByText("8.4%")).toBeInTheDocument();
+    expect(mockedGetMissionAnalytics).toHaveBeenCalledWith(7);
     expect(mockedSaveMission).toHaveBeenCalledOnce();
   });
 

@@ -55,3 +55,31 @@ export type PreFlightResult = {
   checks: PreFlightCheck[];
   warnings: PreFlightCheck[];
 };
+
+export type MissionAnalyticsWarning = {
+  code: string;
+  message: string;
+};
+
+export type MissionAnalyticsResult = {
+  summary: {
+    distance_meters: number;
+    estimated_flight_time_seconds: number;
+    estimated_battery_usage_percent: number;
+    estimated_battery_remaining_percent: number;
+    waypoint_count: number;
+  };
+  statistics: {
+    maximum_altitude_meters: number;
+    minimum_altitude_meters: number;
+    average_altitude_meters: number;
+    average_speed_meters_per_second: number;
+    maximum_speed_meters_per_second: number;
+    total_climb_meters: number;
+    total_descent_meters: number;
+    turn_count: number;
+    longest_leg_distance_meters: number;
+    shortest_leg_distance_meters: number;
+  };
+  warnings: MissionAnalyticsWarning[];
+};
