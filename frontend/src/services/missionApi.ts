@@ -5,6 +5,7 @@ import type {
   Waypoint
 } from "../types/mission";
 import { apiBaseUrl } from "./apiConfig";
+import { parseApiResponse } from "./apiEnvelope";
 import { appLogger } from "./logger";
 
 type ApiWaypoint = {
@@ -74,7 +75,10 @@ export async function listMissions(): Promise<MissionRecord[]> {
     throw new Error("Unable to load saved missions.");
   }
 
-  const missions = (await response.json()) as ApiMissionRecord[];
+  const missions = await parseApiResponse<ApiMissionRecord[]>(
+    response,
+    "Unable to load saved missions."
+  );
   return missions.map(fromApiMission);
 }
 
@@ -99,7 +103,10 @@ export async function uploadMission(
     throw new Error("Mission upload failed.");
   }
 
-  const status = (await response.json()) as ApiMissionUploadStatus;
+  const status = await parseApiResponse<ApiMissionUploadStatus>(
+    response,
+    "Mission upload failed."
+  );
   return {
     missionId: status.mission_id,
     uploaded: status.uploaded,
@@ -131,7 +138,10 @@ export async function validateMission(
   }
 
   return fromApiValidationResult(
-    (await response.json()) as ApiMissionValidationResult
+    await parseApiResponse<ApiMissionValidationResult>(
+      response,
+      "Mission validation failed."
+    )
   );
 }
 
@@ -143,7 +153,9 @@ async function parseMissionResponse(response: Response): Promise<MissionRecord> 
     throw new Error("Mission request failed.");
   }
 
-  return fromApiMission((await response.json()) as ApiMissionRecord);
+  return fromApiMission(
+    await parseApiResponse<ApiMissionRecord>(response, "Mission request failed.")
+  );
 }
 
 function fromApiValidationResult(

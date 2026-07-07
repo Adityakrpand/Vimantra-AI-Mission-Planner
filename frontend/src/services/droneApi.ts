@@ -1,4 +1,5 @@
 import { apiBaseUrl } from "./apiConfig";
+import { parseApiResponse } from "./apiEnvelope";
 import { appLogger } from "./logger";
 
 export type DroneConnectionStatus = {
@@ -119,7 +120,10 @@ export async function getDroneTelemetry(): Promise<DroneTelemetrySnapshot> {
     throw new Error("Drone telemetry request failed.");
   }
 
-  const snapshot = (await response.json()) as ApiDroneTelemetrySnapshot;
+  const snapshot = await parseApiResponse<ApiDroneTelemetrySnapshot>(
+    response,
+    "Drone telemetry request failed."
+  );
   return {
     connected: snapshot.connected,
     latitude: snapshot.latitude,
@@ -146,7 +150,10 @@ async function parseDroneStatusResponse(
     throw new Error("Drone connection request failed.");
   }
 
-  const status = (await response.json()) as ApiDroneConnectionStatus;
+  const status = await parseApiResponse<ApiDroneConnectionStatus>(
+    response,
+    "Drone connection request failed."
+  );
   return {
     connected: status.connected,
     systemAddress: status.system_address,
@@ -164,7 +171,10 @@ async function parseDroneActionResponse(
     throw new Error("Drone action request failed.");
   }
 
-  const status = (await response.json()) as ApiDroneActionStatus;
+  const status = await parseApiResponse<ApiDroneActionStatus>(
+    response,
+    "Drone action request failed."
+  );
   return {
     completed: status.completed,
     action: status.action,

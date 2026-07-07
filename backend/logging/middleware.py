@@ -20,6 +20,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         call_next: RequestResponseEndpoint,
     ) -> Response:
         request_id = request.headers.get("x-request-id", str(uuid4()))
+        request.state.request_id = request_id
         start_time = time.perf_counter()
         with log_context(request_id=request_id):
             logger.info(
@@ -56,6 +57,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                     response.status_code,
                     elapsed_ms,
                 )
+            response.headers["x-request-id"] = request_id
             return response
 
 

@@ -30,10 +30,13 @@ def test_validate_mission_returns_structured_result() -> None:
     )
 
     assert response.status_code == 200
-    assert response.json()["valid"] is True
-    assert response.json()["errors"] == []
-    assert response.json()["statistics"]["waypoints"] == 2
-    assert response.json()["statistics"]["distance"] > 0
+    body = response.json()
+    assert body["success"] is True
+    assert body["request_id"]
+    assert body["data"]["valid"] is True
+    assert body["data"]["errors"] == []
+    assert body["data"]["statistics"]["waypoints"] == 2
+    assert body["data"]["statistics"]["distance"] > 0
 
 
 def test_validate_mission_returns_errors_instead_of_plain_text() -> None:
@@ -58,9 +61,10 @@ def test_validate_mission_returns_errors_instead_of_plain_text() -> None:
     body = response.json()
 
     assert response.status_code == 200
-    assert body["valid"] is False
-    assert isinstance(body["errors"], list)
-    assert {error["code"] for error in body["errors"]} >= {
+    assert body["success"] is True
+    assert body["data"]["valid"] is False
+    assert isinstance(body["data"]["errors"], list)
+    assert {error["code"] for error in body["data"]["errors"]} >= {
         "MISSION_NAME_REQUIRED",
         "TOO_FEW_WAYPOINTS",
         "LATITUDE_REQUIRED",

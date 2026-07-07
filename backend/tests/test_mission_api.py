@@ -26,7 +26,7 @@ def test_create_and_get_mission(client: TestClient) -> None:
     create_response = client.post("/missions", json=create_payload())
 
     assert create_response.status_code == 201
-    created = create_response.json()
+    created = _data(create_response)
     assert created["id"] > 0
     assert created["name"] == "Survey Block A"
     assert [waypoint["sequence"] for waypoint in created["waypoints"]] == [1, 2]
@@ -34,7 +34,7 @@ def test_create_and_get_mission(client: TestClient) -> None:
     get_response = client.get(f"/missions/{created['id']}")
 
     assert get_response.status_code == 200
-    assert get_response.json()["name"] == "Survey Block A"
+    assert _data(get_response)["name"] == "Survey Block A"
 
 
 def test_list_missions(client: TestClient) -> None:
@@ -44,7 +44,7 @@ def test_list_missions(client: TestClient) -> None:
     response = client.get("/missions")
 
     assert response.status_code == 200
-    assert [mission["name"] for mission in response.json()] == [
+    assert [mission["name"] for mission in _data(response)] == [
         "Second Mission",
         "First Mission",
     ]
@@ -52,14 +52,16 @@ def test_list_missions(client: TestClient) -> None:
 
 def test_delete_mission(client: TestClient) -> None:
     create_response = client.post("/missions", json=create_payload())
-    mission_id = create_response.json()["id"]
+    mission_id = _data(create_response)["id"]
 
     delete_response = client.delete(f"/missions/{mission_id}")
     get_response = client.get(f"/missions/{mission_id}")
 
-    assert delete_response.status_code == 204
+    assert delete_response.status_code == 200
+    assert _data(delete_response) == {"deleted": True}
     assert get_response.status_code == 404
-    assert get_response.json() == {"detail": f"Mission {mission_id} was not found."}
+    assert get_response.json()["success"] is False
+    assert get_response.json()["error"]["message"] == f"Mission {mission_id} was not found."
 
 
 def test_create_mission_rejects_invalid_payload(client: TestClient) -> None:
@@ -72,13 +74,25 @@ def test_create_mission_rejects_invalid_payload(client: TestClient) -> None:
     )
 
     assert response.status_code == 422
+    assert response.json()["success"] is False
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
 def test_get_missing_mission_returns_404(client: TestClient) -> None:
     response = client.get("/missions/404")
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Mission 404 was not found."}
+    assert response.json()["success"] is False
+    assert response.json()["error"]["code"] == "NOT_FOUND"
+    assert response.json()["error"]["message"] == "Mission 404 was not found."
+
+
+def _data(response):
+    body = response.json()
+    assert body["success"] is True
+    assert body["request_id"]
+    assert body["error"] is None
+    return body["data"]
 
 
 def create_payload(name: str = "Survey Block A") -> dict[str, object]:

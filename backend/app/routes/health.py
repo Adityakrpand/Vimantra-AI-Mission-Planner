@@ -1,5 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
+
+from app.models.api import ApiResponse, api_success
 
 
 class HealthResponse(BaseModel):
@@ -10,6 +12,6 @@ class HealthResponse(BaseModel):
 router = APIRouter(tags=["health"])
 
 
-@router.get("/health", response_model=HealthResponse)
-def health_check() -> HealthResponse:
-    return HealthResponse(status="ok", service="vimantra-backend")
+@router.get("/health", response_model=ApiResponse[HealthResponse])
+def health_check(request: Request) -> ApiResponse[HealthResponse]:
+    return api_success(request, HealthResponse(status="ok", service="vimantra-backend"))

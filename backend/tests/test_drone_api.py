@@ -123,7 +123,7 @@ def test_drone_status_defaults_to_disconnected(client: TestClient) -> None:
     response = client.get("/drone/status")
 
     assert response.status_code == 200
-    assert response.json() == {
+    assert _data(response) == {
         "connected": False,
         "system_address": None,
         "message": "Drone disconnected.",
@@ -134,8 +134,8 @@ def test_drone_telemetry_defaults_to_disconnected(client: TestClient) -> None:
     response = client.get("/drone/telemetry")
 
     assert response.status_code == 200
-    assert response.json()["connected"] is False
-    assert response.json()["message"] == "Drone disconnected."
+    assert _data(response)["connected"] is False
+    assert _data(response)["message"] == "Drone disconnected."
 
 
 def test_connect_and_disconnect_drone(client: TestClient) -> None:
@@ -147,9 +147,9 @@ def test_connect_and_disconnect_drone(client: TestClient) -> None:
     disconnect_response = client.post("/drone/disconnect")
 
     assert connect_response.status_code == 200
-    assert connect_response.json()["connected"] is True
-    assert status_response.json()["system_address"] == "udp://:14540"
-    assert disconnect_response.json() == {
+    assert _data(connect_response)["connected"] is True
+    assert _data(status_response)["system_address"] == "udp://:14540"
+    assert _data(disconnect_response) == {
         "connected": False,
         "system_address": None,
         "message": "Drone connection cleared.",
@@ -164,9 +164,11 @@ def test_arm_and_disarm_return_conflict_when_disconnected(
     start_response = client.post("/drone/start-mission")
 
     assert arm_response.status_code == 409
-    assert arm_response.json() == {
-        "detail": "Connect to PX4 SITL before sending drone actions."
-    }
+    assert arm_response.json()["success"] is False
+    assert arm_response.json()["error"]["code"] == "CONFLICT"
+    assert arm_response.json()["error"]["message"] == (
+        "Connect to PX4 SITL before sending drone actions."
+    )
     assert disarm_response.status_code == 409
     assert start_response.status_code == 409
 
@@ -181,13 +183,13 @@ def test_arm_and_disarm_connected_drone(client: TestClient) -> None:
     disarm_response = client.post("/drone/disarm")
 
     assert arm_response.status_code == 200
-    assert arm_response.json() == {
+    assert _data(arm_response) == {
         "completed": True,
         "action": "arm",
         "message": "Drone armed.",
     }
     assert disarm_response.status_code == 200
-    assert disarm_response.json() == {
+    assert _data(disarm_response) == {
         "completed": True,
         "action": "disarm",
         "message": "Drone disarmed.",
@@ -203,7 +205,7 @@ def test_start_mission_connected_drone(client: TestClient) -> None:
     response = client.post("/drone/start-mission")
 
     assert response.status_code == 200
-    assert response.json() == {
+    assert _data(response) == {
         "completed": True,
         "action": "start_mission",
         "message": "Mission started.",
@@ -219,8 +221,16 @@ def test_drone_telemetry_connected_drone(client: TestClient) -> None:
     response = client.get("/drone/telemetry")
 
     assert response.status_code == 200
-    assert response.json()["connected"] is True
-    assert response.json()["latitude"] == 19.076
-    assert response.json()["speed_meters_per_second"] == 6
-    assert response.json()["mission_current"] == 1
-    assert response.json()["mission_total"] == 3
+    assert _data(response)["connected"] is True
+    assert _data(response)["latitude"] == 19.076
+    assert _data(response)["speed_meters_per_second"] == 6
+    assert _data(response)["mission_current"] == 1
+    assert _data(response)["mission_total"] == 3
+
+
+def _data(response):
+    body = response.json()
+    assert body["success"] is True
+    assert body["request_id"]
+    assert body["error"] is None
+    return body["data"]

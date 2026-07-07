@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.dependencies import get_app_settings, get_mission_storage, get_mission_validator
 from app.dependencies import get_drone_connection_service
+from app.models.api import ApiResponse, DeleteResult, api_success
 from app.models.mission import MissionCreate, MissionRecord, MissionUploadStatus
 from app.services.drone_connection import DroneConnectionService, DroneNotConnectedError
 from app.services.mission_storage import MissionNotFoundError, MissionStorage
@@ -15,53 +16,58 @@ router = APIRouter(prefix="/missions", tags=["missions"])
 api_router = APIRouter(prefix="/api/missions", tags=["mission validation"])
 
 
-@router.post("", response_model=MissionRecord, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ApiResponse[MissionRecord], status_code=status.HTTP_201_CREATED)
 def create_mission(
+    request: Request,
     mission: MissionCreate,
     storage: MissionStorage = Depends(get_mission_storage),
-) -> MissionRecord:
-    return storage.save_mission(mission)
+) -> ApiResponse[MissionRecord]:
+    return api_success(request, storage.save_mission(mission))
 
 
-@router.get("", response_model=list[MissionRecord])
+@router.get("", response_model=ApiResponse[list[MissionRecord]])
 def list_missions(
+    request: Request,
     storage: MissionStorage = Depends(get_mission_storage),
-) -> list[MissionRecord]:
-    return storage.list_missions()
+) -> ApiResponse[list[MissionRecord]]:
+    return api_success(request, storage.list_missions())
 
 
-@router.get("/{mission_id}", response_model=MissionRecord)
+@router.get("/{mission_id}", response_model=ApiResponse[MissionRecord])
 def get_mission(
+    request: Request,
     mission_id: int,
     storage: MissionStorage = Depends(get_mission_storage),
-) -> MissionRecord:
+) -> ApiResponse[MissionRecord]:
     try:
-        return storage.get_mission(mission_id)
+        return api_success(request, storage.get_mission(mission_id))
     except MissionNotFoundError as error:
         raise _mission_not_found(error.mission_id) from error
 
 
-@router.delete("/{mission_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{mission_id}", response_model=ApiResponse[DeleteResult])
 def delete_mission(
+    request: Request,
     mission_id: int,
     storage: MissionStorage = Depends(get_mission_storage),
-) -> Response:
+) -> ApiResponse[DeleteResult]:
     try:
         storage.delete_mission(mission_id)
     except MissionNotFoundError as error:
         raise _mission_not_found(error.mission_id) from error
 
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return api_success(request, DeleteResult())
 
 
-@router.post("/{mission_id}/upload", response_model=MissionUploadStatus)
+@router.post("/{mission_id}/upload", response_model=ApiResponse[MissionUploadStatus])
 async def upload_mission(
+    request: Request,
     mission_id: int,
     storage: MissionStorage = Depends(get_mission_storage),
     drone_connection: DroneConnectionService = Depends(get_drone_connection_service),
     mission_validator: MissionValidator = Depends(get_mission_validator),
     settings: AppSettings = Depends(get_app_settings),
-) -> MissionUploadStatus:
+) -> ApiResponse[MissionUploadStatus]:
     upload_service = MissionUploadService(
         storage,
         drone_connection,
@@ -70,7 +76,7 @@ async def upload_mission(
     )
 
     try:
-        return await upload_service.upload_mission(mission_id)
+        return api_success(request, await upload_service.upload_mission(mission_id))
     except MissionNotFoundError as error:
         raise _mission_not_found(error.mission_id) from error
     except DroneNotConnectedError as error:
@@ -85,12 +91,13 @@ async def upload_mission(
         ) from error
 
 
-@api_router.post("/validate", response_model=MissionValidationResult)
+@api_router.post("/validate", response_model=ApiResponse[MissionValidationResult])
 def validate_mission(
+    request: Request,
     mission: MissionValidationRequest,
     mission_validator: MissionValidator = Depends(get_mission_validator),
-) -> MissionValidationResult:
-    return mission_validator.validate(mission)
+) -> ApiResponse[MissionValidationResult]:
+    return api_success(request, mission_validator.validate(mission))
 
 
 def _mission_not_found(mission_id: int) -> HTTPException:

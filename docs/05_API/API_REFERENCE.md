@@ -2,6 +2,9 @@
 
 The backend exposes FastAPI-generated OpenAPI documentation at `http://127.0.0.1:8000/docs` when running locally.
 
+All endpoints return the standardized API envelope documented in
+[API Response Standard](../04_API/API_Response_Standard.md).
+
 ## Health
 
 `GET /health`
@@ -30,29 +33,34 @@ Deletes a saved mission and its waypoints.
 
 Uploads a saved mission to the connected drone system.
 
-The mission is automatically validated before upload. Invalid missions return `400` with a structured validation result in the response `detail`.
+The mission is automatically validated before upload. Invalid missions return `400` with `error.code` set to `MISSION_INVALID` and the structured validation result in `error.details`.
 
 ## Mission Validation
 
 `POST /api/missions/validate`
 
-Validates a mission without uploading it. Returns structured JSON:
+Validates a mission without uploading it. The validation result is returned in the response `data` field:
 
 ```json
 {
-  "valid": false,
-  "errors": [
-    {
-      "code": "ALTITUDE_TOO_LOW",
-      "waypoint": 3,
-      "message": "Altitude must be at least 5 meters."
+  "success": true,
+  "request_id": "abc123",
+  "data": {
+    "valid": false,
+    "errors": [
+      {
+        "code": "ALTITUDE_TOO_LOW",
+        "waypoint": 3,
+        "message": "Altitude must be at least 5 meters."
+      }
+    ],
+    "warnings": [],
+    "statistics": {
+      "waypoints": 5,
+      "distance": 1280.5
     }
-  ],
-  "warnings": [],
-  "statistics": {
-    "waypoints": 5,
-    "distance": 1280.5
-  }
+  },
+  "error": null
 }
 ```
 
@@ -93,5 +101,6 @@ Starts the uploaded mission.
 - Missing missions return `404`.
 - Mission validation failures return `400` with structured validation details.
 - Drone actions that require a connection return `409` when disconnected.
-- PX4 connection timeout returns `504`.
-- Validation failures return FastAPI validation errors.
+- PX4 connection timeout returns `500`.
+- Request validation failures return `422`.
+- Unhandled exceptions return `500` without exposing stack traces to clients.

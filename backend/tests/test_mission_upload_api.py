@@ -46,14 +46,16 @@ def test_upload_mission_returns_conflict_when_drone_disconnected(
     api_context: tuple[TestClient, FakeDroneSystem, DroneConnectionService],
 ) -> None:
     client, _, _ = api_context
-    mission_id = client.post("/missions", json=create_payload()).json()["id"]
+    mission_id = _data(client.post("/missions", json=create_payload()))["id"]
 
     response = client.post(f"/missions/{mission_id}/upload")
 
     assert response.status_code == 409
-    assert response.json() == {
-        "detail": "Connect to PX4 SITL before uploading a mission."
-    }
+    assert response.json()["success"] is False
+    assert response.json()["error"]["code"] == "CONFLICT"
+    assert response.json()["error"]["message"] == (
+        "Connect to PX4 SITL before uploading a mission."
+    )
 
 
 def test_upload_mission_calls_connected_drone_mission_plugin(
@@ -63,12 +65,12 @@ def test_upload_mission_calls_connected_drone_mission_plugin(
     drone_connection._system = fake_system
     drone_connection._system_address = "udp://:14540"
     drone_connection._connected = True
-    mission_id = client.post("/missions", json=create_payload()).json()["id"]
+    mission_id = _data(client.post("/missions", json=create_payload()))["id"]
 
     response = client.post(f"/missions/{mission_id}/upload")
 
     assert response.status_code == 200
-    assert response.json() == {
+    assert _data(response) == {
         "mission_id": mission_id,
         "uploaded": True,
         "waypoint_count": 2,
@@ -84,27 +86,31 @@ def test_upload_mission_returns_bad_request_when_validation_fails(
     drone_connection._system = fake_system
     drone_connection._system_address = "udp://:14540"
     drone_connection._connected = True
-    mission_id = client.post(
-        "/missions",
-        json={
-            "name": "Invalid Upload Mission",
-            "waypoints": [
-                {
-                    "sequence": 1,
-                    "latitude": 19.076,
-                    "longitude": 72.8777,
-                    "altitude_meters": 1,
-                    "speed_meters_per_second": 8,
-                }
-            ],
-        },
-    ).json()["id"]
+    mission_id = _data(
+        client.post(
+            "/missions",
+            json={
+                "name": "Invalid Upload Mission",
+                "waypoints": [
+                    {
+                        "sequence": 1,
+                        "latitude": 19.076,
+                        "longitude": 72.8777,
+                        "altitude_meters": 1,
+                        "speed_meters_per_second": 8,
+                    }
+                ],
+            },
+        )
+    )["id"]
 
     response = client.post(f"/missions/{mission_id}/upload")
 
     assert response.status_code == 400
-    assert response.json()["detail"]["valid"] is False
-    assert {error["code"] for error in response.json()["detail"]["errors"]} == {
+    assert response.json()["success"] is False
+    assert response.json()["error"]["code"] == "MISSION_INVALID"
+    assert response.json()["error"]["details"]["valid"] is False
+    assert {error["code"] for error in response.json()["error"]["details"]["errors"]} == {
         "TOO_FEW_WAYPOINTS",
         "ALTITUDE_TOO_LOW",
     }
@@ -131,3 +137,11 @@ def create_payload() -> dict[str, object]:
             },
         ],
     }
+
+
+def _data(response):
+    body = response.json()
+    assert body["success"] is True
+    assert body["request_id"]
+    assert body["error"] is None
+    return body["data"]

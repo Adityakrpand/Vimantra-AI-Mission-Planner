@@ -172,6 +172,12 @@ This repository follows:
 
 Every mission must pass the Mission Validation Engine before upload to PX4. The validator is independent from the upload service and is reusable for future AI-generated missions.
 
+## API Response Standard
+
+Backend endpoints return a consistent envelope with `success`, `request_id`, `data`, and `error`. Request IDs are also returned in the `x-request-id` header and included in backend logs.
+
+See [docs/04_API/API_Response_Standard.md](docs/04_API/API_Response_Standard.md).
+
 Validation endpoint:
 
 ```text
