@@ -43,6 +43,10 @@ Runs pre-flight checks for a saved mission. Failed mandatory checks return `read
 
 Returns deterministic mission analytics, including distance, estimated flight time, battery usage, altitude and speed statistics, turn count, and warnings.
 
+`GET /missions/{mission_id}/validation`
+
+Returns the V1 mission readiness dashboard result for a saved mission. The response includes mission status, score, errors, warnings, passed checks, failed checks, and expandable validation categories. Missing missions return `404` with `error.code` set to `NOT_FOUND`.
+
 ## Mission Validation
 
 `POST /api/missions/validate`

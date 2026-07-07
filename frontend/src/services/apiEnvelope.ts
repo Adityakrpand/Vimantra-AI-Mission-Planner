@@ -15,7 +15,12 @@ export async function parseApiResponse<T>(
   response: Response,
   fallbackMessage: string
 ): Promise<T> {
-  const envelope = (await response.json()) as ApiResponse<T>;
+  let envelope: ApiResponse<T>;
+  try {
+    envelope = (await response.json()) as ApiResponse<T>;
+  } catch {
+    throw new Error(fallbackMessage);
+  }
 
   if (!response.ok || !envelope.success || envelope.data === null) {
     throw new Error(envelope.error?.message ?? fallbackMessage);

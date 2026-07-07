@@ -30,3 +30,12 @@ Use this checklist for every tagged release.
 - Release notes include known limitations.
 - Security notes reviewed.
 - Rollback path documented when applicable.
+
+## v1.0.0-rc1 QA Snapshot
+
+- Backend tests: `108 passed`.
+- Frontend tests: `15 passed`.
+- Frontend production build: passed.
+- CHANGELOG created.
+- Mission Analytics and Mission Validation panels reviewed for consistent states.
+- PX4 SITL workflow remains an external manual check when PX4 is available.

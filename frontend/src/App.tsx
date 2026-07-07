@@ -181,6 +181,10 @@ export function App() {
     useState<MissionAnalyticsResult | null>(null);
   const [validationDashboardResult, setValidationDashboardResult] =
     useState<MissionValidationEngineResult | null>(null);
+  const [isLoadingMissionInsights, setIsLoadingMissionInsights] = useState(false);
+  const [missionInsightsError, setMissionInsightsError] = useState<string | null>(
+    null
+  );
   const [droneStatus, setDroneStatus] = useState<DroneConnectionStatus>({
     connected: false,
     systemAddress: null,
@@ -304,6 +308,7 @@ export function App() {
     setPreFlightResult(null);
     setAnalyticsResult(null);
     setValidationDashboardResult(null);
+    setMissionInsightsError(null);
     setWaypoints((currentWaypoints) => [
       ...currentWaypoints,
       createWaypoint(currentWaypoints.length)
@@ -322,8 +327,7 @@ export function App() {
       setMissionName(savedMission.name);
       setSelectedMissionId(savedMission.id);
       setPreFlightResult(null);
-      await refreshMissionValidation(savedMission.id);
-      await refreshMissionAnalytics(savedMission.id);
+      await refreshMissionInsights(savedMission.id);
       setStatusMessage(`Saved mission ${savedMission.name}.`);
       await refreshSavedMissions();
     } catch {
@@ -347,8 +351,7 @@ export function App() {
       setSelectedMissionId(loadedMission.id);
       setValidationResult(null);
       setPreFlightResult(null);
-      await refreshMissionValidation(loadedMission.id);
-      await refreshMissionAnalytics(loadedMission.id);
+      await refreshMissionInsights(loadedMission.id);
       setStatusMessage(`Loaded mission ${loadedMission.name}.`);
     } catch {
       setStatusMessage("Mission load failed. Check backend connection.");
@@ -401,20 +404,35 @@ export function App() {
     }
   };
 
-  const refreshMissionAnalytics = async (missionId: number) => {
-    try {
-      setAnalyticsResult(await getMissionAnalytics(missionId));
-    } catch {
-      setAnalyticsResult(null);
-    }
-  };
+  const refreshMissionInsights = async (missionId: number) => {
+    setIsLoadingMissionInsights(true);
+    setMissionInsightsError(null);
 
-  const refreshMissionValidation = async (missionId: number) => {
-    try {
-      setValidationDashboardResult(await getMissionValidation(missionId));
-    } catch {
+    const [validationResponse, analyticsResponse] = await Promise.allSettled([
+      getMissionValidation(missionId),
+      getMissionAnalytics(missionId)
+    ]);
+
+    if (validationResponse.status === "fulfilled") {
+      setValidationDashboardResult(validationResponse.value);
+    } else {
       setValidationDashboardResult(null);
     }
+
+    if (analyticsResponse.status === "fulfilled") {
+      setAnalyticsResult(analyticsResponse.value);
+    } else {
+      setAnalyticsResult(null);
+    }
+
+    if (
+      validationResponse.status === "rejected" ||
+      analyticsResponse.status === "rejected"
+    ) {
+      setMissionInsightsError("Mission insights unavailable.");
+    }
+
+    setIsLoadingMissionInsights(false);
   };
 
   const handleValidateMission = async () => {
@@ -503,6 +521,7 @@ export function App() {
     setPreFlightResult(null);
     setAnalyticsResult(null);
     setValidationDashboardResult(null);
+    setMissionInsightsError(null);
     setWaypoints((currentWaypoints) =>
       resequenceWaypoints(
         currentWaypoints.filter((waypoint) => waypoint.id !== waypointId)
@@ -518,6 +537,8 @@ export function App() {
     setValidationResult(null);
     setPreFlightResult(null);
     setAnalyticsResult(null);
+    setValidationDashboardResult(null);
+    setMissionInsightsError(null);
     const limits = {
       altitudeMeters: { minimum: 1, maximum: 500 },
       speedMetersPerSecond: { minimum: 1, maximum: 40 }
@@ -582,6 +603,7 @@ export function App() {
                   setPreFlightResult(null);
                   setAnalyticsResult(null);
                   setValidationDashboardResult(null);
+                  setMissionInsightsError(null);
                 }}
                 value={missionName}
               />
@@ -603,12 +625,20 @@ export function App() {
 
             <div className="mt-6">
               <PanelTitle title="Mission Validation" />
-              <MissionValidationPanel result={validationDashboardResult} />
+              <MissionValidationPanel
+                errorMessage={missionInsightsError}
+                isLoading={isLoadingMissionInsights}
+                result={validationDashboardResult}
+              />
             </div>
 
             <div className="mt-6">
               <PanelTitle title="Mission Analytics" />
-              <MissionAnalyticsPanel result={analyticsResult} />
+              <MissionAnalyticsPanel
+                errorMessage={missionInsightsError}
+                isLoading={isLoadingMissionInsights}
+                result={analyticsResult}
+              />
             </div>
 
             <div className="mt-6">
@@ -677,6 +707,7 @@ export function App() {
                   setPreFlightResult(null);
                   setAnalyticsResult(null);
                   setValidationDashboardResult(null);
+                  setMissionInsightsError(null);
                   setStatusMessage("Mission cleared.");
                 }}
               />
@@ -786,16 +817,20 @@ function MissionList({
 }
 
 function MissionAnalyticsPanel({
+  errorMessage,
+  isLoading,
   result
 }: {
+  errorMessage: string | null;
+  isLoading: boolean;
   result: MissionAnalyticsResult | null;
 }) {
+  if (isLoading) {
+    return <MissionPanelState message="Loading mission analytics" />;
+  }
+
   if (result === null) {
-    return (
-      <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">
-        Save or load a mission
-      </div>
-    );
+    return <MissionPanelState message={errorMessage ?? "Save or load a mission"} />;
   }
 
   const rows = [
@@ -848,16 +883,20 @@ function MissionAnalyticsPanel({
 }
 
 function MissionValidationPanel({
+  errorMessage,
+  isLoading,
   result
 }: {
+  errorMessage: string | null;
+  isLoading: boolean;
   result: MissionValidationEngineResult | null;
 }) {
+  if (isLoading) {
+    return <MissionPanelState message="Loading mission validation" />;
+  }
+
   if (result === null) {
-    return (
-      <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">
-        Save or load a mission
-      </div>
-    );
+    return <MissionPanelState message={errorMessage ?? "Save or load a mission"} />;
   }
 
   const statusCopy = {
@@ -929,6 +968,14 @@ function MissionValidationPanel({
           </details>
         ))}
       </div>
+    </div>
+  );
+}
+
+function MissionPanelState({ message }: { message: string }) {
+  return (
+    <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">
+      {message}
     </div>
   );
 }
