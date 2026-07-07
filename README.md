@@ -52,6 +52,54 @@ Start services separately when debugging:
 .\scripts\start_frontend.ps1
 ```
 
+## Configuration
+
+Configuration is environment-driven. Backend settings are loaded from environment variables and optional env files in this order:
+
+1. Built-in defaults.
+2. `.env`
+3. `.env.<environment>`, such as `.env.development`, `.env.testing`, or `.env.production`.
+4. Process environment variables.
+
+Copy the examples before editing local settings:
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item frontend/.env.example frontend/.env
+```
+
+Important backend variables:
+
+- `VIMANTRA_ENV`: `development`, `testing`, or `production`.
+- `VIMANTRA_API_HOST` and `VIMANTRA_API_PORT`: API bind address.
+- `VIMANTRA_DATABASE_PATH`: SQLite mission database path.
+- `VIMANTRA_MAVSDK_ADDRESS`: default MAVSDK connection address.
+- `VIMANTRA_DRONE_CONNECTION_TIMEOUT_SECONDS`: PX4 connection timeout.
+- `VIMANTRA_TELEMETRY_READ_TIMEOUT_SECONDS`: telemetry stream read timeout.
+- `VIMANTRA_MISSION_UPLOAD_TIMEOUT_SECONDS`: MAVSDK mission upload timeout.
+- `VIMANTRA_VALIDATION_*`: mission validation limits and warning thresholds.
+
+Important frontend variable:
+
+- `VITE_API_BASE_URL`: backend API base URL.
+
+To change the MAVSDK address:
+
+```powershell
+$env:VIMANTRA_MAVSDK_ADDRESS = "udp://:14540"
+```
+
+To change validation limits, edit `.env`:
+
+```text
+VIMANTRA_VALIDATION_MINIMUM_ALTITUDE_METERS=5
+VIMANTRA_VALIDATION_MAXIMUM_ALTITUDE_METERS=120
+VIMANTRA_VALIDATION_MINIMUM_SPEED_METERS_PER_SECOND=1
+VIMANTRA_VALIDATION_MAXIMUM_SPEED_METERS_PER_SECOND=15
+```
+
+Invalid configuration fails application startup with a clear validation error. See [docs/08_Deployment/Configuration.md](docs/08_Deployment/Configuration.md).
+
 ## Verification
 
 Backend tests:

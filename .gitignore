@@ -2,6 +2,10 @@ node_modules/
 dist/
 *.tsbuildinfo
 *.log
+.env
+.env.development
+.env.testing
+.env.production
 .venv/
 .tmp/
 .pip-cache/

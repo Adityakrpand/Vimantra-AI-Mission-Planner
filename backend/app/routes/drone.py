@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.dependencies import get_drone_connection_service
+from app.dependencies import get_app_settings, get_drone_connection_service
 from app.models.drone import (
     DroneActionStatus,
     DroneConnectionRequest,
@@ -14,6 +14,7 @@ from app.services.drone_connection import (
     DroneNotConnectedError,
 )
 from app.services.telemetry import TelemetryService
+from config.settings import AppSettings
 
 router = APIRouter(prefix="/drone", tags=["drone"])
 
@@ -22,11 +23,14 @@ router = APIRouter(prefix="/drone", tags=["drone"])
 async def connect_drone(
     request: DroneConnectionRequest,
     service: DroneConnectionService = Depends(get_drone_connection_service),
+    settings: AppSettings = Depends(get_app_settings),
 ) -> DroneConnectionStatus:
     try:
         return await service.connect(
-            system_address=request.system_address,
-            timeout_seconds=request.timeout_seconds,
+            system_address=request.system_address or settings.mavsdk_address,
+            timeout_seconds=(
+                request.timeout_seconds or settings.drone_connection_timeout_seconds
+            ),
         )
     except DroneConnectionTimeoutError as error:
         raise HTTPException(
@@ -52,8 +56,12 @@ def get_drone_status(
 @router.get("/telemetry", response_model=DroneTelemetrySnapshot)
 async def get_drone_telemetry(
     service: DroneConnectionService = Depends(get_drone_connection_service),
+    settings: AppSettings = Depends(get_app_settings),
 ) -> DroneTelemetrySnapshot:
-    return await TelemetryService(service).get_snapshot()
+    return await TelemetryService(
+        service,
+        timeout_seconds=settings.telemetry_read_timeout_seconds,
+    ).get_snapshot()
 
 
 @router.post("/arm", response_model=DroneActionStatus)

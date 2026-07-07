@@ -61,12 +61,11 @@ export async function getDroneStatus(): Promise<DroneConnectionStatus> {
 }
 
 export async function connectDrone(
-  systemAddress = "udp://:14540"
+  systemAddress?: string
 ): Promise<DroneConnectionStatus> {
   const response = await fetch(`${apiBaseUrl}/drone/connect`, {
     body: JSON.stringify({
-      system_address: systemAddress,
-      timeout_seconds: 10
+      system_address: systemAddress
     }),
     headers: {
       "Content-Type": "application/json"

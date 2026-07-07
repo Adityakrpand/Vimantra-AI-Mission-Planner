@@ -7,6 +7,7 @@ from typing import Any, Protocol
 
 from app.models.drone import DroneTelemetrySnapshot
 from app.services.drone_connection import DroneConnectionService, DroneNotConnectedError
+from config import defaults
 
 
 class TelemetryPlugin(Protocol):
@@ -38,7 +39,7 @@ class TelemetryService:
     def __init__(
         self,
         drone_connection: DroneConnectionService,
-        timeout_seconds: float = 1,
+        timeout_seconds: float = defaults.DEFAULT_TELEMETRY_READ_TIMEOUT_SECONDS,
     ) -> None:
         self._drone_connection = drone_connection
         self._timeout_seconds = timeout_seconds

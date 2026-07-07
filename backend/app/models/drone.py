@@ -4,8 +4,8 @@ from pydantic import BaseModel, ConfigDict, Field
 class DroneConnectionRequest(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    system_address: str = Field(default="udp://:14540", min_length=1, max_length=200)
-    timeout_seconds: float = Field(default=10, gt=0, le=60)
+    system_address: str | None = Field(default=None, min_length=1, max_length=200)
+    timeout_seconds: float | None = Field(default=None, gt=0, le=60)
 
 
 class DroneConnectionStatus(BaseModel):

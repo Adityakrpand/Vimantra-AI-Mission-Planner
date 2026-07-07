@@ -1,13 +1,14 @@
 from functools import lru_cache
-from pathlib import Path
 
 from app.services.drone_connection import DroneConnectionService
 from app.services.mission_storage import MissionStorage
+from config.settings import AppSettings, get_settings
+from mission.validator import MissionValidator
 
 
 @lru_cache
 def get_mission_storage() -> MissionStorage:
-    storage = MissionStorage(_default_database_path())
+    storage = MissionStorage(get_settings().resolved_database_path)
     storage.initialize()
     return storage
 
@@ -17,5 +18,10 @@ def get_drone_connection_service() -> DroneConnectionService:
     return DroneConnectionService()
 
 
-def _default_database_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "database" / "missions.sqlite"
+@lru_cache
+def get_mission_validator() -> MissionValidator:
+    return MissionValidator(get_settings().mission_validation_config())
+
+
+def get_app_settings() -> AppSettings:
+    return get_settings()

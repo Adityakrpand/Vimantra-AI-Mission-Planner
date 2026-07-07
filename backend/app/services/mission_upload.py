@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Protocol
 
 from mavsdk.mission import MissionItem, MissionPlan
@@ -22,10 +23,12 @@ class MissionUploadService:
         mission_storage: MissionStorage,
         drone_connection: DroneConnectionService,
         mission_validator: MissionValidator | None = None,
+        upload_timeout_seconds: float = 30,
     ) -> None:
         self._mission_storage = mission_storage
         self._drone_connection = drone_connection
         self._mission_validator = mission_validator or MissionValidator()
+        self._upload_timeout_seconds = upload_timeout_seconds
 
     async def upload_mission(self, mission_id: int) -> MissionUploadStatus:
         mission = self._mission_storage.get_mission(mission_id)
@@ -39,7 +42,8 @@ class MissionUploadService:
         )
 
         mission_plugin = system.mission
-        await mission_plugin.upload_mission(mission_plan)
+        async with asyncio.timeout(self._upload_timeout_seconds):
+            await mission_plugin.upload_mission(mission_plan)
 
         return MissionUploadStatus(
             mission_id=mission.id,

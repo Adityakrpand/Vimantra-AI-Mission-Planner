@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115.6,<0.116.0",
   "mavsdk>=3.0.0,<4.0.0",
+  "pydantic-settings>=2.7.0,<3.0.0",
   "uvicorn[standard]>=0.34.0,<0.35.0"
 ]
 
@@ -19,3 +20,6 @@ dev = [
 addopts = "-p no:cacheprovider --basetemp=.pytest-tmp"
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.setuptools.packages.find]
+include = ["app*", "config*", "mission*"]

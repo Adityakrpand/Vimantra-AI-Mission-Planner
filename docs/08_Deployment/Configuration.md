@@ -1,0 +1,63 @@
+# Configuration
+
+Vimantra AI Mission Planner uses environment-driven configuration. Backend settings are typed, validated at startup, and loaded through the backend `config/` package. Frontend runtime configuration is provided through Vite environment variables.
+
+## Configuration Hierarchy
+
+Backend settings are resolved in this order:
+
+1. Built-in defaults that preserve local development behavior.
+2. `.env`
+3. `.env.<environment>`, where `<environment>` is `development`, `testing`, or `production`.
+4. Process environment variables.
+
+Real `.env` files are ignored by Git. Commit only `*.example` files.
+
+## Backend Variables
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `VIMANTRA_ENV` | `development` | Runtime environment |
+| `VIMANTRA_DEBUG` | `true` | FastAPI debug mode |
+| `VIMANTRA_LOG_LEVEL` | `INFO` | Logging threshold |
+| `VIMANTRA_API_HOST` | `127.0.0.1` | API bind host |
+| `VIMANTRA_API_PORT` | `8000` | API bind port |
+| `VIMANTRA_CORS_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173` | Allowed browser origins |
+| `VIMANTRA_DATABASE_PATH` | `database/missions.sqlite` | SQLite database path |
+| `VIMANTRA_MAVSDK_ADDRESS` | `udp://:14540` | Default MAVSDK connection address |
+| `VIMANTRA_DRONE_CONNECTION_TIMEOUT_SECONDS` | `10` | PX4 connection timeout |
+| `VIMANTRA_TELEMETRY_REFRESH_INTERVAL_SECONDS` | `2` | Frontend telemetry cadence reference |
+| `VIMANTRA_TELEMETRY_READ_TIMEOUT_SECONDS` | `1` | Backend telemetry stream read timeout |
+| `VIMANTRA_MISSION_UPLOAD_TIMEOUT_SECONDS` | `30` | MAVSDK mission upload timeout |
+| `VIMANTRA_MISSION_TIMEOUT_SECONDS` | `60` | Mission operation timeout reserved for future workflow use |
+| `VIMANTRA_VALIDATION_MINIMUM_WAYPOINTS` | `2` | Minimum valid mission waypoint count |
+| `VIMANTRA_VALIDATION_MAXIMUM_WAYPOINTS` | `100` | Maximum valid mission waypoint count |
+| `VIMANTRA_VALIDATION_MINIMUM_ALTITUDE_METERS` | `5` | Minimum allowed waypoint altitude |
+| `VIMANTRA_VALIDATION_MAXIMUM_ALTITUDE_METERS` | `120` | Maximum allowed waypoint altitude |
+| `VIMANTRA_VALIDATION_MINIMUM_SPEED_METERS_PER_SECOND` | `1` | Minimum allowed waypoint speed |
+| `VIMANTRA_VALIDATION_MAXIMUM_SPEED_METERS_PER_SECOND` | `15` | Maximum allowed waypoint speed |
+| `VIMANTRA_VALIDATION_HIGH_SPEED_WARNING_METERS_PER_SECOND` | `12` | Warning threshold for high speed |
+| `VIMANTRA_VALIDATION_DISTANCE_WARNING_METERS` | `5000` | Warning threshold for long missions |
+| `VIMANTRA_VALIDATION_CLOSE_WAYPOINT_WARNING_METERS` | `2` | Warning threshold for close waypoints |
+
+## Frontend Variables
+
+| Variable | Purpose |
+| --- | --- |
+| `VITE_API_BASE_URL` | Backend API base URL used by frontend service clients |
+
+## Startup Sequence
+
+1. FastAPI calls `create_app`.
+2. The backend loads `AppSettings`.
+3. Settings validation runs.
+4. Invalid settings stop startup immediately.
+5. Valid settings configure CORS, database path, drone defaults, mission validation, telemetry timeout, and upload timeout.
+
+## Best Practices
+
+- Use `.env.development` for local work.
+- Use `.env.testing` for isolated test configuration.
+- Use `.env.production` only as a local template; provide real production values through deployment secrets or runtime environment variables.
+- Do not commit real `.env` files.
+- Keep MAVSDK and validation changes environment-specific rather than editing source code.

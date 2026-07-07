@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from app.dependencies import get_mission_storage
+from app.dependencies import get_app_settings, get_mission_storage, get_mission_validator
 from app.dependencies import get_drone_connection_service
 from app.models.mission import MissionCreate, MissionRecord, MissionUploadStatus
 from app.services.drone_connection import DroneConnectionService, DroneNotConnectedError
 from app.services.mission_storage import MissionNotFoundError, MissionStorage
 from app.services.mission_upload import MissionUploadService
+from config.settings import AppSettings
 from mission.exceptions import MissionValidationError
 from mission.validation_models import MissionValidationRequest, MissionValidationResult
 from mission.validator import MissionValidator
@@ -58,8 +59,15 @@ async def upload_mission(
     mission_id: int,
     storage: MissionStorage = Depends(get_mission_storage),
     drone_connection: DroneConnectionService = Depends(get_drone_connection_service),
+    mission_validator: MissionValidator = Depends(get_mission_validator),
+    settings: AppSettings = Depends(get_app_settings),
 ) -> MissionUploadStatus:
-    upload_service = MissionUploadService(storage, drone_connection)
+    upload_service = MissionUploadService(
+        storage,
+        drone_connection,
+        mission_validator,
+        upload_timeout_seconds=settings.mission_upload_timeout_seconds,
+    )
 
     try:
         return await upload_service.upload_mission(mission_id)
@@ -80,8 +88,9 @@ async def upload_mission(
 @api_router.post("/validate", response_model=MissionValidationResult)
 def validate_mission(
     mission: MissionValidationRequest,
+    mission_validator: MissionValidator = Depends(get_mission_validator),
 ) -> MissionValidationResult:
-    return MissionValidator().validate(mission)
+    return mission_validator.validate(mission)
 
 
 def _mission_not_found(mission_id: int) -> HTTPException:

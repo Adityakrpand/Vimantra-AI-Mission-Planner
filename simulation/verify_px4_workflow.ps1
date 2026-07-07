@@ -1,12 +1,21 @@
 param(
-  [string]$BackendUrl = "http://127.0.0.1:8000",
-  [string]$SystemAddress = "udp://:14540",
+  [string]$BackendUrl = "",
+  [string]$SystemAddress = "",
   [int]$ConnectTimeoutSeconds = 10,
   [int]$ApiTimeoutSeconds = 30,
   [switch]$SkipDroneActions
 )
 
 $ErrorActionPreference = "Stop"
+
+if (-not $BackendUrl) {
+  $backendHost = if ($env:VIMANTRA_API_HOST) { $env:VIMANTRA_API_HOST } else { "127.0.0.1" }
+  $backendPort = if ($env:VIMANTRA_API_PORT) { $env:VIMANTRA_API_PORT } else { "8000" }
+  $BackendUrl = "http://$($backendHost):$($backendPort)"
+}
+if (-not $SystemAddress) {
+  $SystemAddress = if ($env:VIMANTRA_MAVSDK_ADDRESS) { $env:VIMANTRA_MAVSDK_ADDRESS } else { "udp://:14540" }
+}
 
 function Write-Step {
   param([string]$Message)

@@ -6,13 +6,11 @@ This register identifies improvement opportunities without changing Version 1.0 
 
 Current state:
 
-- Backend host, port, database path, CORS origins, and MAVSDK defaults are mostly hardcoded for local development.
+- Addressed in Sprint 12 with a typed backend `config/` package, env examples, fail-fast validation, and frontend `VITE_API_BASE_URL` support.
 
 Recommendation:
 
-- Introduce typed settings for backend configuration.
-- Add `.env.example` files for frontend and backend.
-- Document environment-specific configuration.
+- Continue moving future AI, fleet, and cloud settings into the same centralized configuration system.
 
 ## Logging
 

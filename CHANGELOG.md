@@ -22,11 +22,13 @@ This project follows [Semantic Versioning](https://semver.org/) and uses release
 - Validation API at `POST /api/missions/validate`.
 - Upload-time mission validation gate before PX4 upload.
 - Frontend Validate Mission button with valid/invalid result display.
+- Centralized backend configuration system with typed settings, environment files, validation, and documented frontend API configuration.
 
 ### Changed
 
 - Bounded MAVSDK connection attempts with timeout handling so missing PX4 SITL fails cleanly.
 - Removed nonfunctional placeholder controls from the Version 1.0 UI.
+- Moved validation limits, database path, CORS origins, MAVSDK defaults, and operational timeouts into environment-driven configuration.
 
 ### Known Limitations
 

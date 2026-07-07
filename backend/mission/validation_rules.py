@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import atan2, cos, radians, sin, sqrt
 
+from config import defaults
 from mission.validation_models import (
     MissionValidationIssue,
     MissionValidationRequest,
@@ -12,14 +13,25 @@ from mission.validation_models import (
 
 @dataclass(frozen=True)
 class MissionValidationConfig:
-    minimum_waypoints: int = 2
-    minimum_altitude_meters: float = 5
-    maximum_altitude_meters: float = 120
-    minimum_speed_meters_per_second: float = 1
-    maximum_speed_meters_per_second: float = 15
-    high_speed_warning_meters_per_second: float = 12
-    maximum_distance_warning_meters: float = 5000
-    close_waypoint_warning_meters: float = 2
+    minimum_waypoints: int = defaults.DEFAULT_VALIDATION_MINIMUM_WAYPOINTS
+    maximum_waypoints: int = defaults.DEFAULT_VALIDATION_MAXIMUM_WAYPOINTS
+    minimum_altitude_meters: float = defaults.DEFAULT_VALIDATION_MINIMUM_ALTITUDE_METERS
+    maximum_altitude_meters: float = defaults.DEFAULT_VALIDATION_MAXIMUM_ALTITUDE_METERS
+    minimum_speed_meters_per_second: float = (
+        defaults.DEFAULT_VALIDATION_MINIMUM_SPEED_METERS_PER_SECOND
+    )
+    maximum_speed_meters_per_second: float = (
+        defaults.DEFAULT_VALIDATION_MAXIMUM_SPEED_METERS_PER_SECOND
+    )
+    high_speed_warning_meters_per_second: float = (
+        defaults.DEFAULT_VALIDATION_HIGH_SPEED_WARNING_METERS_PER_SECOND
+    )
+    maximum_distance_warning_meters: float = (
+        defaults.DEFAULT_VALIDATION_DISTANCE_WARNING_METERS
+    )
+    close_waypoint_warning_meters: float = (
+        defaults.DEFAULT_VALIDATION_CLOSE_WAYPOINT_WARNING_METERS
+    )
 
 
 def validate_mission_name(mission: MissionValidationRequest) -> list[MissionValidationIssue]:
@@ -43,6 +55,13 @@ def validate_waypoint_count(
             MissionValidationIssue(
                 code="TOO_FEW_WAYPOINTS",
                 message=f"Mission must contain at least {config.minimum_waypoints} waypoints.",
+            )
+        ]
+    if len(mission.waypoints) > config.maximum_waypoints:
+        return [
+            MissionValidationIssue(
+                code="TOO_MANY_WAYPOINTS",
+                message=f"Mission cannot contain more than {config.maximum_waypoints} waypoints.",
             )
         ]
 
@@ -279,4 +298,3 @@ def _has_complete_position(waypoint: MissionValidationWaypoint) -> bool:
         and waypoint.longitude is not None
         and waypoint.altitude_meters is not None
     )
-
