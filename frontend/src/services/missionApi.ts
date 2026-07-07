@@ -1,6 +1,7 @@
 import type {
   MissionAnalyticsResult,
   MissionRecord,
+  MissionValidationEngineResult,
   MissionValidationResult,
   MissionUploadStatus,
   PreFlightResult,
@@ -151,6 +152,25 @@ export async function getMissionAnalytics(
   return parseApiResponse<MissionAnalyticsResult>(
     response,
     "Mission analytics request failed."
+  );
+}
+
+export async function getMissionValidation(
+  missionId: number
+): Promise<MissionValidationEngineResult> {
+  const response = await fetch(`${apiBaseUrl}/missions/${missionId}/validation`);
+
+  if (!response.ok) {
+    appLogger.apiRequestFailure("Mission validation dashboard request failed.", {
+      missionId,
+      status: response.status
+    });
+    throw new Error("Mission validation dashboard request failed.");
+  }
+
+  return parseApiResponse<MissionValidationEngineResult>(
+    response,
+    "Mission validation dashboard request failed."
   );
 }
 

@@ -6,6 +6,7 @@ from app.services.mission_storage import MissionStorage
 from config.settings import AppSettings, get_settings
 from mission.validator import MissionValidator
 from preflight.service import PreFlightService
+from validation.validator import MissionValidationEngine
 
 
 @lru_cache
@@ -33,6 +34,11 @@ def get_preflight_service() -> PreFlightService:
 @lru_cache
 def get_mission_analytics_service() -> MissionAnalyticsService:
     return MissionAnalyticsService(get_settings().mission_analytics_config())
+
+
+@lru_cache
+def get_mission_validation_engine() -> MissionValidationEngine:
+    return MissionValidationEngine(get_settings().validation_engine_config())
 
 
 def get_app_settings() -> AppSettings:

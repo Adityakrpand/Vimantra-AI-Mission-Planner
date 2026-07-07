@@ -19,6 +19,7 @@ from config.validation import (
 )
 from mission.validation_rules import MissionValidationConfig
 from preflight.models import PreFlightConfig
+from validation.config import ValidationEngineConfig
 
 
 class AppSettings(BaseSettings):
@@ -111,6 +112,60 @@ class AppSettings(BaseSettings):
     )
     analytics_sharp_turn_warning_count: int = Field(
         default=defaults.DEFAULT_ANALYTICS_SHARP_TURN_WARNING_COUNT
+    )
+    validation_engine_minimum_waypoints: int = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MINIMUM_WAYPOINTS
+    )
+    validation_engine_maximum_waypoints: int = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MAXIMUM_WAYPOINTS
+    )
+    validation_engine_minimum_altitude_meters: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MINIMUM_ALTITUDE_METERS
+    )
+    validation_engine_maximum_altitude_meters: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MAXIMUM_ALTITUDE_METERS
+    )
+    validation_engine_maximum_altitude_jump_meters: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MAXIMUM_ALTITUDE_JUMP_METERS
+    )
+    validation_engine_maximum_climb_rate_meters_per_second: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MAXIMUM_CLIMB_RATE_METERS_PER_SECOND
+    )
+    validation_engine_maximum_descent_rate_meters_per_second: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MAXIMUM_DESCENT_RATE_METERS_PER_SECOND
+    )
+    validation_engine_minimum_speed_meters_per_second: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MINIMUM_SPEED_METERS_PER_SECOND
+    )
+    validation_engine_cruise_speed_meters_per_second: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_CRUISE_SPEED_METERS_PER_SECOND
+    )
+    validation_engine_maximum_speed_meters_per_second: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MAXIMUM_SPEED_METERS_PER_SECOND
+    )
+    validation_engine_maximum_mission_distance_meters: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MAXIMUM_MISSION_DISTANCE_METERS
+    )
+    validation_engine_maximum_single_leg_distance_meters: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MAXIMUM_SINGLE_LEG_DISTANCE_METERS
+    )
+    validation_engine_minimum_waypoint_spacing_meters: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MINIMUM_WAYPOINT_SPACING_METERS
+    )
+    validation_engine_maximum_flight_time_seconds: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MAXIMUM_FLIGHT_TIME_SECONDS
+    )
+    validation_engine_maximum_battery_usage_percent: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MAXIMUM_BATTERY_USAGE_PERCENT
+    )
+    validation_engine_minimum_battery_reserve_percent: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_MINIMUM_BATTERY_RESERVE_PERCENT
+    )
+    validation_engine_sharp_turn_warning_degrees: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_SHARP_TURN_WARNING_DEGREES
+    )
+    validation_engine_sharp_turn_error_degrees: float = Field(
+        default=defaults.DEFAULT_VALIDATION_ENGINE_SHARP_TURN_ERROR_DEGREES
     )
 
     @field_validator("env", mode="before")
@@ -247,8 +302,91 @@ class AppSettings(BaseSettings):
             raise ValueError(
                 "VIMANTRA_ANALYTICS_SHARP_TURN_WARNING_COUNT cannot be negative."
             )
+        self._validate_validation_engine_settings()
 
         return self
+
+    def _validate_validation_engine_settings(self) -> None:
+        if self.validation_engine_minimum_waypoints <= 0:
+            raise ValueError(
+                "VIMANTRA_VALIDATION_ENGINE_MINIMUM_WAYPOINTS must be greater than zero."
+            )
+        if (
+            self.validation_engine_maximum_waypoints
+            < self.validation_engine_minimum_waypoints
+        ):
+            raise ValueError(
+                "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_WAYPOINTS must be greater than "
+                "or equal to VIMANTRA_VALIDATION_ENGINE_MINIMUM_WAYPOINTS."
+            )
+        validate_less_than(
+            self.validation_engine_minimum_altitude_meters,
+            self.validation_engine_maximum_altitude_meters,
+            "VIMANTRA_VALIDATION_ENGINE_MINIMUM_ALTITUDE_METERS",
+            "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_ALTITUDE_METERS",
+        )
+        validate_less_than(
+            self.validation_engine_minimum_speed_meters_per_second,
+            self.validation_engine_maximum_speed_meters_per_second,
+            "VIMANTRA_VALIDATION_ENGINE_MINIMUM_SPEED_METERS_PER_SECOND",
+            "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_SPEED_METERS_PER_SECOND",
+        )
+        numeric_positive_fields = {
+            "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_ALTITUDE_JUMP_METERS": (
+                self.validation_engine_maximum_altitude_jump_meters
+            ),
+            "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_CLIMB_RATE_METERS_PER_SECOND": (
+                self.validation_engine_maximum_climb_rate_meters_per_second
+            ),
+            "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_DESCENT_RATE_METERS_PER_SECOND": (
+                self.validation_engine_maximum_descent_rate_meters_per_second
+            ),
+            "VIMANTRA_VALIDATION_ENGINE_MINIMUM_SPEED_METERS_PER_SECOND": (
+                self.validation_engine_minimum_speed_meters_per_second
+            ),
+            "VIMANTRA_VALIDATION_ENGINE_CRUISE_SPEED_METERS_PER_SECOND": (
+                self.validation_engine_cruise_speed_meters_per_second
+            ),
+            "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_SPEED_METERS_PER_SECOND": (
+                self.validation_engine_maximum_speed_meters_per_second
+            ),
+            "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_MISSION_DISTANCE_METERS": (
+                self.validation_engine_maximum_mission_distance_meters
+            ),
+            "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_SINGLE_LEG_DISTANCE_METERS": (
+                self.validation_engine_maximum_single_leg_distance_meters
+            ),
+            "VIMANTRA_VALIDATION_ENGINE_MINIMUM_WAYPOINT_SPACING_METERS": (
+                self.validation_engine_minimum_waypoint_spacing_meters
+            ),
+            "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_FLIGHT_TIME_SECONDS": (
+                self.validation_engine_maximum_flight_time_seconds
+            ),
+        }
+        for name, value in numeric_positive_fields.items():
+            validate_positive(value, name)
+        if not 0 <= self.validation_engine_maximum_battery_usage_percent <= 100:
+            raise ValueError(
+                "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_BATTERY_USAGE_PERCENT must be "
+                "between 0 and 100."
+            )
+        if not 0 <= self.validation_engine_minimum_battery_reserve_percent <= 100:
+            raise ValueError(
+                "VIMANTRA_VALIDATION_ENGINE_MINIMUM_BATTERY_RESERVE_PERCENT must be "
+                "between 0 and 100."
+            )
+        if self.validation_engine_sharp_turn_warning_degrees < 0:
+            raise ValueError(
+                "VIMANTRA_VALIDATION_ENGINE_SHARP_TURN_WARNING_DEGREES cannot be negative."
+            )
+        if (
+            self.validation_engine_sharp_turn_error_degrees
+            < self.validation_engine_sharp_turn_warning_degrees
+        ):
+            raise ValueError(
+                "VIMANTRA_VALIDATION_ENGINE_SHARP_TURN_ERROR_DEGREES must be greater "
+                "than or equal to VIMANTRA_VALIDATION_ENGINE_SHARP_TURN_WARNING_DEGREES."
+            )
 
     @property
     def resolved_database_path(self) -> Path:
@@ -303,6 +441,54 @@ class AppSettings(BaseSettings):
                 self.analytics_maximum_recommended_climb_meters
             ),
             sharp_turn_warning_count=self.analytics_sharp_turn_warning_count,
+        )
+
+    def validation_engine_config(self) -> ValidationEngineConfig:
+        return ValidationEngineConfig(
+            minimum_waypoints=self.validation_engine_minimum_waypoints,
+            maximum_waypoints=self.validation_engine_maximum_waypoints,
+            minimum_altitude_meters=self.validation_engine_minimum_altitude_meters,
+            maximum_altitude_meters=self.validation_engine_maximum_altitude_meters,
+            maximum_altitude_jump_meters=(
+                self.validation_engine_maximum_altitude_jump_meters
+            ),
+            maximum_climb_rate_meters_per_second=(
+                self.validation_engine_maximum_climb_rate_meters_per_second
+            ),
+            maximum_descent_rate_meters_per_second=(
+                self.validation_engine_maximum_descent_rate_meters_per_second
+            ),
+            minimum_speed_meters_per_second=(
+                self.validation_engine_minimum_speed_meters_per_second
+            ),
+            cruise_speed_meters_per_second=(
+                self.validation_engine_cruise_speed_meters_per_second
+            ),
+            maximum_speed_meters_per_second=(
+                self.validation_engine_maximum_speed_meters_per_second
+            ),
+            maximum_mission_distance_meters=(
+                self.validation_engine_maximum_mission_distance_meters
+            ),
+            maximum_single_leg_distance_meters=(
+                self.validation_engine_maximum_single_leg_distance_meters
+            ),
+            minimum_waypoint_spacing_meters=(
+                self.validation_engine_minimum_waypoint_spacing_meters
+            ),
+            maximum_flight_time_seconds=(
+                self.validation_engine_maximum_flight_time_seconds
+            ),
+            maximum_battery_usage_percent=(
+                self.validation_engine_maximum_battery_usage_percent
+            ),
+            minimum_battery_reserve_percent=(
+                self.validation_engine_minimum_battery_reserve_percent
+            ),
+            sharp_turn_warning_degrees=(
+                self.validation_engine_sharp_turn_warning_degrees
+            ),
+            sharp_turn_error_degrees=self.validation_engine_sharp_turn_error_degrees,
         )
 
 

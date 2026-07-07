@@ -14,6 +14,7 @@ Version 1.0 does not implement autonomous AI planning. AI mission planning is re
 - Validate missions before upload.
 - Run pre-flight checks before mission upload and mission start.
 - Review mission analytics before upload and flight.
+- Review V1 mission readiness from the independent validation dashboard.
 - Arm, disarm, and start missions.
 - Monitor telemetry for position, altitude, speed, heading, battery, GPS fix, flight mode, and mission progress.
 - Verify the local backend-only workflow and the PX4 SITL workflow with repeatable scripts.
@@ -80,6 +81,7 @@ Important backend variables:
 - `VIMANTRA_TELEMETRY_READ_TIMEOUT_SECONDS`: telemetry stream read timeout.
 - `VIMANTRA_MISSION_UPLOAD_TIMEOUT_SECONDS`: MAVSDK mission upload timeout.
 - `VIMANTRA_VALIDATION_*`: mission validation limits and warning thresholds.
+- `VIMANTRA_VALIDATION_ENGINE_*`: V1 readiness validation thresholds.
 
 Important frontend variable:
 
@@ -98,6 +100,16 @@ VIMANTRA_VALIDATION_MINIMUM_ALTITUDE_METERS=5
 VIMANTRA_VALIDATION_MAXIMUM_ALTITUDE_METERS=120
 VIMANTRA_VALIDATION_MINIMUM_SPEED_METERS_PER_SECOND=1
 VIMANTRA_VALIDATION_MAXIMUM_SPEED_METERS_PER_SECOND=15
+```
+
+To change V1 validation dashboard limits, edit `.env`:
+
+```text
+VIMANTRA_VALIDATION_ENGINE_MAXIMUM_MISSION_DISTANCE_METERS=5000
+VIMANTRA_VALIDATION_ENGINE_MAXIMUM_SINGLE_LEG_DISTANCE_METERS=2000
+VIMANTRA_VALIDATION_ENGINE_MINIMUM_WAYPOINT_SPACING_METERS=2
+VIMANTRA_VALIDATION_ENGINE_MAXIMUM_FLIGHT_TIME_SECONDS=900
+VIMANTRA_VALIDATION_ENGINE_MINIMUM_BATTERY_RESERVE_PERCENT=25
 ```
 
 Invalid configuration fails application startup with a clear validation error. See [docs/08_Deployment/Configuration.md](docs/08_Deployment/Configuration.md).
@@ -173,6 +185,8 @@ This repository follows:
 ## Mission Validation
 
 Every mission must pass the Mission Validation Engine before upload to PX4. The validator is independent from the upload service and is reusable for future AI-generated missions.
+
+Saved missions also expose the V1 validation dashboard at `GET /missions/{mission_id}/validation`. The dashboard returns mission readiness status, score, errors, warnings, passed checks, and failed checks. See [docs/06_Validation/Mission_Validation.md](docs/06_Validation/Mission_Validation.md).
 
 ## API Response Standard
 

@@ -47,6 +47,24 @@ Real `.env` files are ignored by Git. Commit only `*.example` files.
 | `VIMANTRA_ANALYTICS_AVERAGE_SPEED_WARNING_METERS_PER_SECOND` | `12` | Analytics warning threshold for average speed |
 | `VIMANTRA_ANALYTICS_MAXIMUM_RECOMMENDED_CLIMB_METERS` | `100` | Analytics warning threshold for total climb |
 | `VIMANTRA_ANALYTICS_SHARP_TURN_WARNING_COUNT` | `5` | Analytics warning threshold for sharp turn count |
+| `VIMANTRA_VALIDATION_ENGINE_MINIMUM_WAYPOINTS` | `2` | V1 validation minimum waypoint count |
+| `VIMANTRA_VALIDATION_ENGINE_MAXIMUM_WAYPOINTS` | `100` | V1 validation maximum waypoint count |
+| `VIMANTRA_VALIDATION_ENGINE_MINIMUM_ALTITUDE_METERS` | `5` | V1 validation minimum altitude |
+| `VIMANTRA_VALIDATION_ENGINE_MAXIMUM_ALTITUDE_METERS` | `120` | V1 validation maximum altitude |
+| `VIMANTRA_VALIDATION_ENGINE_MAXIMUM_ALTITUDE_JUMP_METERS` | `60` | V1 validation sudden altitude jump warning threshold |
+| `VIMANTRA_VALIDATION_ENGINE_MAXIMUM_CLIMB_RATE_METERS_PER_SECOND` | `3` | V1 validation maximum safe climb rate |
+| `VIMANTRA_VALIDATION_ENGINE_MAXIMUM_DESCENT_RATE_METERS_PER_SECOND` | `3` | V1 validation maximum safe descent rate |
+| `VIMANTRA_VALIDATION_ENGINE_MINIMUM_SPEED_METERS_PER_SECOND` | `1` | V1 validation minimum speed |
+| `VIMANTRA_VALIDATION_ENGINE_CRUISE_SPEED_METERS_PER_SECOND` | `12` | V1 validation recommended cruise speed |
+| `VIMANTRA_VALIDATION_ENGINE_MAXIMUM_SPEED_METERS_PER_SECOND` | `15` | V1 validation maximum speed |
+| `VIMANTRA_VALIDATION_ENGINE_MAXIMUM_MISSION_DISTANCE_METERS` | `5000` | V1 validation maximum mission distance |
+| `VIMANTRA_VALIDATION_ENGINE_MAXIMUM_SINGLE_LEG_DISTANCE_METERS` | `2000` | V1 validation maximum single-leg distance |
+| `VIMANTRA_VALIDATION_ENGINE_MINIMUM_WAYPOINT_SPACING_METERS` | `2` | V1 validation minimum waypoint spacing |
+| `VIMANTRA_VALIDATION_ENGINE_MAXIMUM_FLIGHT_TIME_SECONDS` | `900` | V1 validation maximum flight duration |
+| `VIMANTRA_VALIDATION_ENGINE_MAXIMUM_BATTERY_USAGE_PERCENT` | `75` | V1 validation maximum estimated battery usage |
+| `VIMANTRA_VALIDATION_ENGINE_MINIMUM_BATTERY_RESERVE_PERCENT` | `25` | V1 validation required reserve battery |
+| `VIMANTRA_VALIDATION_ENGINE_SHARP_TURN_WARNING_DEGREES` | `110` | V1 validation sharp turn warning threshold |
+| `VIMANTRA_VALIDATION_ENGINE_SHARP_TURN_ERROR_DEGREES` | `145` | V1 validation sharp turn error threshold |
 
 ## Frontend Variables
 

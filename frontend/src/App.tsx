@@ -14,6 +14,7 @@ import {
 } from "./services/droneApi";
 import {
   getMissionAnalytics,
+  getMissionValidation,
   listMissions,
   loadMission,
   runPreFlight,
@@ -24,6 +25,8 @@ import {
 import type {
   MissionAnalyticsResult,
   MissionRecord,
+  MissionValidationEngineCheck,
+  MissionValidationEngineResult,
   PreFlightResult,
   MissionValidationResult,
   Waypoint
@@ -176,6 +179,8 @@ export function App() {
     useState<PreFlightResult | null>(null);
   const [analyticsResult, setAnalyticsResult] =
     useState<MissionAnalyticsResult | null>(null);
+  const [validationDashboardResult, setValidationDashboardResult] =
+    useState<MissionValidationEngineResult | null>(null);
   const [droneStatus, setDroneStatus] = useState<DroneConnectionStatus>({
     connected: false,
     systemAddress: null,
@@ -298,6 +303,7 @@ export function App() {
     setValidationResult(null);
     setPreFlightResult(null);
     setAnalyticsResult(null);
+    setValidationDashboardResult(null);
     setWaypoints((currentWaypoints) => [
       ...currentWaypoints,
       createWaypoint(currentWaypoints.length)
@@ -316,6 +322,7 @@ export function App() {
       setMissionName(savedMission.name);
       setSelectedMissionId(savedMission.id);
       setPreFlightResult(null);
+      await refreshMissionValidation(savedMission.id);
       await refreshMissionAnalytics(savedMission.id);
       setStatusMessage(`Saved mission ${savedMission.name}.`);
       await refreshSavedMissions();
@@ -340,6 +347,7 @@ export function App() {
       setSelectedMissionId(loadedMission.id);
       setValidationResult(null);
       setPreFlightResult(null);
+      await refreshMissionValidation(loadedMission.id);
       await refreshMissionAnalytics(loadedMission.id);
       setStatusMessage(`Loaded mission ${loadedMission.name}.`);
     } catch {
@@ -398,6 +406,14 @@ export function App() {
       setAnalyticsResult(await getMissionAnalytics(missionId));
     } catch {
       setAnalyticsResult(null);
+    }
+  };
+
+  const refreshMissionValidation = async (missionId: number) => {
+    try {
+      setValidationDashboardResult(await getMissionValidation(missionId));
+    } catch {
+      setValidationDashboardResult(null);
     }
   };
 
@@ -486,6 +502,7 @@ export function App() {
     setValidationResult(null);
     setPreFlightResult(null);
     setAnalyticsResult(null);
+    setValidationDashboardResult(null);
     setWaypoints((currentWaypoints) =>
       resequenceWaypoints(
         currentWaypoints.filter((waypoint) => waypoint.id !== waypointId)
@@ -564,6 +581,7 @@ export function App() {
                   setValidationResult(null);
                   setPreFlightResult(null);
                   setAnalyticsResult(null);
+                  setValidationDashboardResult(null);
                 }}
                 value={missionName}
               />
@@ -581,6 +599,11 @@ export function App() {
                 selectedMissionId={selectedMissionId}
                 savedMissions={savedMissions}
               />
+            </div>
+
+            <div className="mt-6">
+              <PanelTitle title="Mission Validation" />
+              <MissionValidationPanel result={validationDashboardResult} />
             </div>
 
             <div className="mt-6">
@@ -652,6 +675,8 @@ export function App() {
                   setSelectedMissionId(null);
                   setValidationResult(null);
                   setPreFlightResult(null);
+                  setAnalyticsResult(null);
+                  setValidationDashboardResult(null);
                   setStatusMessage("Mission cleared.");
                 }}
               />
@@ -820,6 +845,157 @@ function MissionAnalyticsPanel({
       )}
     </div>
   );
+}
+
+function MissionValidationPanel({
+  result
+}: {
+  result: MissionValidationEngineResult | null;
+}) {
+  if (result === null) {
+    return (
+      <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">
+        Save or load a mission
+      </div>
+    );
+  }
+
+  const statusCopy = {
+    ready: {
+      label: "Mission Ready",
+      readiness: "Ready",
+      tone: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+    },
+    warning: {
+      label: "Mission Requires Attention",
+      readiness: "Attention",
+      tone: "border-amber-500/40 bg-amber-500/10 text-amber-200"
+    },
+    unsafe: {
+      label: "Mission Unsafe",
+      readiness: "Unsafe",
+      tone: "border-red-500/40 bg-red-500/10 text-red-200"
+    }
+  }[result.status];
+  const categories = groupValidationChecks(result.checks);
+
+  return (
+    <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-900 p-3">
+      <div className={`rounded-md border px-3 py-2 ${statusCopy.tone}`}>
+        <div className="flex items-center justify-between gap-2 text-sm font-semibold">
+          <span>{statusCopy.label}</span>
+          <span>{result.score}</span>
+        </div>
+        <p className="mt-1 text-xs">Overall Readiness: {statusCopy.readiness}</p>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <MetricCard label="Passed Checks" value={String(result.summary.passed_checks)} />
+        <MetricCard label="Failed Checks" value={String(result.summary.failed_checks)} />
+        <MetricCard label="Errors" value={String(result.summary.errors)} />
+        <MetricCard label="Warnings" value={String(result.summary.warnings)} />
+      </div>
+
+      {result.errors.length > 0 && (
+        <ValidationIssueList title="Errors" tone="red" issues={result.errors} />
+      )}
+      {result.warnings.length > 0 && (
+        <ValidationIssueList title="Warnings" tone="amber" issues={result.warnings} />
+      )}
+
+      <div className="mt-3 space-y-2">
+        {categories.map(({ category, checks }) => (
+          <details
+            className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2"
+            key={category}
+          >
+            <summary className="cursor-pointer text-xs font-semibold text-zinc-200">
+              {category}
+            </summary>
+            <ul className="mt-2 space-y-2">
+              {checks.map((check) => (
+                <li
+                  className="flex items-start gap-2 text-xs text-zinc-300"
+                  key={`${check.category}-${check.name}-${check.status}`}
+                >
+                  <ValidationStatusIcon status={check.status} />
+                  <span>
+                    <span className="font-medium text-zinc-100">{check.name}</span>
+                    <span className="block text-zinc-400">{check.message}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ValidationIssueList({
+  issues,
+  title,
+  tone
+}: {
+  issues: MissionValidationEngineResult["errors"];
+  title: string;
+  tone: "amber" | "red";
+}) {
+  const toneClass = tone === "red" ? "text-red-300" : "text-amber-300";
+
+  return (
+    <div className={`mt-3 text-xs ${toneClass}`}>
+      <p className="font-semibold">{title}</p>
+      <ul className="mt-1 space-y-1">
+        {issues.map((issue) => (
+          <li key={`${issue.code}-${issue.waypoint ?? "mission"}`}>
+            {issue.waypoint === null ? "" : `WP${issue.waypoint}: `}
+            {issue.message}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ValidationStatusIcon({
+  status
+}: {
+  status: MissionValidationEngineCheck["status"];
+}) {
+  const styles = {
+    PASS: "border-emerald-500 bg-emerald-500 text-zinc-950",
+    WARNING: "border-amber-500 bg-amber-500 text-zinc-950",
+    FAIL: "border-red-500 bg-red-500 text-white"
+  }[status];
+  const labels = {
+    PASS: "OK",
+    WARNING: "!",
+    FAIL: "X"
+  }[status];
+
+  return (
+    <span
+      aria-label={status}
+      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${styles}`}
+      role="img"
+    >
+      {labels}
+    </span>
+  );
+}
+
+function groupValidationChecks(checks: MissionValidationEngineCheck[]) {
+  const grouped = new Map<string, MissionValidationEngineCheck[]>();
+  for (const check of checks) {
+    grouped.set(check.category, [...(grouped.get(check.category) ?? []), check]);
+  }
+
+  return Array.from(grouped.entries()).map(([category, categoryChecks]) => ({
+    category,
+    checks: categoryChecks
+  }));
 }
 
 function WaypointEditor({

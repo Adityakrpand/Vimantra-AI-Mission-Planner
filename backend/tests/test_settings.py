@@ -26,6 +26,8 @@ def test_settings_load_default_values() -> None:
     assert settings.preflight_config().optional_checks_enabled is True
     assert settings.mission_analytics_config().maximum_recommended_distance_meters == 5000
     assert settings.mission_analytics_config().battery_warning_threshold_percent == 25
+    assert settings.validation_engine_config().maximum_mission_distance_meters == 5000
+    assert settings.validation_engine_config().minimum_battery_reserve_percent == 25
 
 
 def test_settings_load_environment_overrides(tmp_path: Path) -> None:
@@ -50,6 +52,8 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
                 "VIMANTRA_ANALYTICS_AVERAGE_SPEED_WARNING_METERS_PER_SECOND=10",
                 "VIMANTRA_ANALYTICS_MAXIMUM_RECOMMENDED_CLIMB_METERS=75",
                 "VIMANTRA_ANALYTICS_SHARP_TURN_WARNING_COUNT=3",
+                "VIMANTRA_VALIDATION_ENGINE_MAXIMUM_MISSION_DISTANCE_METERS=2400",
+                "VIMANTRA_VALIDATION_ENGINE_MINIMUM_BATTERY_RESERVE_PERCENT=35",
                 "VIMANTRA_CORS_ORIGINS=http://localhost:3000,http://localhost:5173",
             ]
         ),
@@ -75,6 +79,8 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
     assert settings.analytics_average_speed_warning_meters_per_second == 10
     assert settings.analytics_maximum_recommended_climb_meters == 75
     assert settings.analytics_sharp_turn_warning_count == 3
+    assert settings.validation_engine_maximum_mission_distance_meters == 2400
+    assert settings.validation_engine_minimum_battery_reserve_percent == 35
     assert settings.cors_origins == ["http://localhost:3000", "http://localhost:5173"]
 
 
@@ -96,6 +102,12 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
         ("VIMANTRA_ANALYTICS_AVERAGE_SPEED_WARNING_METERS_PER_SECOND", "0"),
         ("VIMANTRA_ANALYTICS_MAXIMUM_RECOMMENDED_CLIMB_METERS", "0"),
         ("VIMANTRA_ANALYTICS_SHARP_TURN_WARNING_COUNT", "-1"),
+        ("VIMANTRA_VALIDATION_ENGINE_MINIMUM_WAYPOINTS", "0"),
+        ("VIMANTRA_VALIDATION_ENGINE_MAXIMUM_ALTITUDE_METERS", "4"),
+        ("VIMANTRA_VALIDATION_ENGINE_MINIMUM_SPEED_METERS_PER_SECOND", "0"),
+        ("VIMANTRA_VALIDATION_ENGINE_MAXIMUM_MISSION_DISTANCE_METERS", "0"),
+        ("VIMANTRA_VALIDATION_ENGINE_MINIMUM_BATTERY_RESERVE_PERCENT", "101"),
+        ("VIMANTRA_VALIDATION_ENGINE_SHARP_TURN_ERROR_DEGREES", "20"),
     ],
 )
 def test_settings_reject_invalid_configuration(

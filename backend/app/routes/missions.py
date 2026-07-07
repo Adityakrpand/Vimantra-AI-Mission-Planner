@@ -4,6 +4,7 @@ from app.dependencies import (
     get_app_settings,
     get_mission_analytics_service,
     get_mission_storage,
+    get_mission_validation_engine,
     get_mission_validator,
     get_preflight_service,
 )
@@ -23,6 +24,8 @@ from mission.validator import MissionValidator
 from preflight.exceptions import PreFlightCheckFailedError
 from preflight.models import PreFlightResult
 from preflight.service import PreFlightService
+from validation.models import MissionValidationResponse
+from validation.validator import MissionValidationEngine
 
 router = APIRouter(prefix="/missions", tags=["missions"])
 api_router = APIRouter(prefix="/api/missions", tags=["mission validation"])
@@ -154,6 +157,23 @@ def get_mission_analytics(
         raise _mission_not_found(error.mission_id) from error
 
     return api_success(request, analytics_service.generate(mission))
+
+
+@router.get("/{mission_id}/validation", response_model=ApiResponse[MissionValidationResponse])
+def get_mission_validation(
+    request: Request,
+    mission_id: int,
+    storage: MissionStorage = Depends(get_mission_storage),
+    validation_engine: MissionValidationEngine = Depends(
+        get_mission_validation_engine
+    ),
+) -> ApiResponse[MissionValidationResponse]:
+    try:
+        mission = storage.get_mission(mission_id)
+    except MissionNotFoundError as error:
+        raise _mission_not_found(error.mission_id) from error
+
+    return api_success(request, validation_engine.validate(mission))
 
 
 @api_router.post("/validate", response_model=ApiResponse[MissionValidationResult])

@@ -12,6 +12,7 @@ import {
 } from "./services/droneApi";
 import {
   getMissionAnalytics,
+  getMissionValidation,
   listMissions,
   loadMission,
   runPreFlight,
@@ -32,6 +33,7 @@ vi.mock("./services/droneApi", () => ({
 
 vi.mock("./services/missionApi", () => ({
   getMissionAnalytics: vi.fn(),
+  getMissionValidation: vi.fn(),
   listMissions: vi.fn(),
   loadMission: vi.fn(),
   runPreFlight: vi.fn(),
@@ -48,6 +50,7 @@ const mockedGetDroneTelemetry = vi.mocked(getDroneTelemetry);
 const mockedGetDroneStatus = vi.mocked(getDroneStatus);
 const mockedStartMission = vi.mocked(startMission);
 const mockedGetMissionAnalytics = vi.mocked(getMissionAnalytics);
+const mockedGetMissionValidation = vi.mocked(getMissionValidation);
 const mockedListMissions = vi.mocked(listMissions);
 const mockedLoadMission = vi.mocked(loadMission);
 const mockedRunPreFlight = vi.mocked(runPreFlight);
@@ -105,6 +108,28 @@ describe("App", () => {
         shortest_leg_distance_meters: 1280.5
       },
       warnings: []
+    });
+    mockedGetMissionValidation.mockReset();
+    mockedGetMissionValidation.mockResolvedValue({
+      status: "ready",
+      score: 100,
+      errors: [],
+      warnings: [],
+      checks: [
+        {
+          name: "Minimum Waypoints",
+          category: "Waypoints",
+          status: "PASS",
+          message: "Mission has enough waypoints."
+        }
+      ],
+      summary: {
+        errors: 0,
+        warnings: 0,
+        passed: true,
+        passed_checks: 1,
+        failed_checks: 0
+      }
     });
     mockedListMissions.mockResolvedValue([]);
     mockedLoadMission.mockReset();
@@ -384,9 +409,71 @@ describe("App", () => {
 
     expect(await screen.findByText("Saved mission Untitled.")).toBeInTheDocument();
     expect(await screen.findByText("Battery Usage")).toBeInTheDocument();
+    expect(screen.getByText("Mission Ready")).toBeInTheDocument();
     expect(screen.getByText("8.4%")).toBeInTheDocument();
     expect(mockedGetMissionAnalytics).toHaveBeenCalledWith(7);
+    expect(mockedGetMissionValidation).toHaveBeenCalledWith(7);
     expect(mockedSaveMission).toHaveBeenCalledOnce();
+  });
+
+  it("renders mission validation dashboard warnings", async () => {
+    mockedSaveMission.mockResolvedValue({
+      id: 31,
+      name: "Validation Warning",
+      createdAt: "2026-07-06T00:00:00.000Z",
+      updatedAt: "2026-07-06T00:00:00.000Z",
+      waypoints: [
+        {
+          id: "31-1",
+          sequence: 1,
+          latitude: 19.076,
+          longitude: 72.8777,
+          altitudeMeters: 80,
+          speedMetersPerSecond: 8
+        }
+      ]
+    });
+    mockedGetMissionValidation.mockResolvedValue({
+      status: "warning",
+      score: 85,
+      errors: [],
+      warnings: [
+        {
+          code: "CRUISE_SPEED_HIGH",
+          category: "Speed",
+          waypoint: 1,
+          message: "Waypoint speed is above the recommended cruise speed."
+        }
+      ],
+      checks: [
+        {
+          name: "Cruise Speed",
+          category: "Speed",
+          status: "WARNING",
+          message: "Waypoint speed is above the recommended cruise speed."
+        }
+      ],
+      summary: {
+        errors: 0,
+        warnings: 1,
+        passed: true,
+        passed_checks: 0,
+        failed_checks: 0
+      }
+    });
+
+    render(<App />);
+    await screen.findByText("No saved missions");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add WP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText("Mission Requires Attention")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Overall Readiness: Attention")).toBeInTheDocument();
+    expect(screen.getByText("Waypoint speed is above the recommended cruise speed."))
+      .toBeInTheDocument();
   });
 
   it("loads a selected mission through the mission API", async () => {

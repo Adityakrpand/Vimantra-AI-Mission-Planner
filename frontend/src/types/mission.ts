@@ -83,3 +83,35 @@ export type MissionAnalyticsResult = {
   };
   warnings: MissionAnalyticsWarning[];
 };
+
+export type MissionValidationEngineStatus = "ready" | "warning" | "unsafe";
+export type MissionValidationCheckStatus = "PASS" | "WARNING" | "FAIL";
+
+export type MissionValidationEngineIssue = {
+  code: string;
+  message: string;
+  category: string;
+  waypoint: number | null;
+};
+
+export type MissionValidationEngineCheck = {
+  name: string;
+  category: string;
+  status: MissionValidationCheckStatus;
+  message: string;
+};
+
+export type MissionValidationEngineResult = {
+  status: MissionValidationEngineStatus;
+  score: number;
+  errors: MissionValidationEngineIssue[];
+  warnings: MissionValidationEngineIssue[];
+  checks: MissionValidationEngineCheck[];
+  summary: {
+    errors: number;
+    warnings: number;
+    passed: boolean;
+    passed_checks: number;
+    failed_checks: number;
+  };
+};
