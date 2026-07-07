@@ -5,6 +5,7 @@ import type {
   Waypoint
 } from "../types/mission";
 import { apiBaseUrl } from "./apiConfig";
+import { appLogger } from "./logger";
 
 type ApiWaypoint = {
   sequence: number;
@@ -67,6 +68,9 @@ export async function listMissions(): Promise<MissionRecord[]> {
   const response = await fetch(`${apiBaseUrl}/missions`);
 
   if (!response.ok) {
+    appLogger.apiRequestFailure("Unable to load saved missions.", {
+      status: response.status
+    });
     throw new Error("Unable to load saved missions.");
   }
 
@@ -88,6 +92,10 @@ export async function uploadMission(
   });
 
   if (!response.ok) {
+    appLogger.apiRequestFailure("Mission upload failed.", {
+      missionId,
+      status: response.status
+    });
     throw new Error("Mission upload failed.");
   }
 
@@ -116,6 +124,9 @@ export async function validateMission(
   });
 
   if (!response.ok) {
+    appLogger.missionValidationFailure("Mission validation request failed.", {
+      status: response.status
+    });
     throw new Error("Mission validation failed.");
   }
 
@@ -126,6 +137,9 @@ export async function validateMission(
 
 async function parseMissionResponse(response: Response): Promise<MissionRecord> {
   if (!response.ok) {
+    appLogger.apiRequestFailure("Mission request failed.", {
+      status: response.status
+    });
     throw new Error("Mission request failed.");
   }
 

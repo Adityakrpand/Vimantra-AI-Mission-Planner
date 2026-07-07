@@ -8,6 +8,11 @@ from typing import Any, Protocol
 from app.models.drone import DroneTelemetrySnapshot
 from app.services.drone_connection import DroneConnectionService, DroneNotConnectedError
 from config import defaults
+from logging.audit import audit_event
+from logging.constants import AuditEvent
+from logging.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class TelemetryPlugin(Protocol):
@@ -48,6 +53,7 @@ class TelemetryService:
         try:
             system = self._drone_connection.get_connected_system()
         except DroneNotConnectedError:
+            logger.info("Telemetry requested while drone is disconnected.")
             return DroneTelemetrySnapshot(
                 connected=False,
                 message="Drone disconnected.",
@@ -89,6 +95,11 @@ async def _read_first(stream: AsyncIterator[Any], timeout_seconds: float) -> Any
             async for value in stream:
                 return value
     except TimeoutError:
+        audit_event(
+            AuditEvent.TELEMETRY_TIMEOUT,
+            "Telemetry stream read timed out.",
+            level="WARNING",
+        )
         return None
 
     return None

@@ -22,4 +22,4 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.setuptools.packages.find]
-include = ["app*", "config*", "mission*"]
+include = ["app*", "config*", "logging*", "mission*"]

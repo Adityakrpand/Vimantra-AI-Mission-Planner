@@ -5,6 +5,12 @@ from pathlib import Path
 from typing import Iterable
 
 from app.models.mission import MissionCreate, MissionRecord, Waypoint
+from logging.audit import audit_event
+from logging.constants import AuditEvent
+from logging.context import log_context
+from logging.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class MissionNotFoundError(Exception):
@@ -22,6 +28,7 @@ class MissionStorage:
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as connection:
             connection.executescript(self.schema_path.read_text(encoding="utf-8"))
+        logger.info("Mission storage initialized path=%s", self.database_path)
 
     def save_mission(self, mission: MissionCreate) -> MissionRecord:
         ordered_waypoints = _normalize_waypoint_sequence(mission.waypoints)
@@ -57,7 +64,14 @@ class MissionStorage:
                 ],
             )
 
-        return self.get_mission(mission_id)
+        record = self.get_mission(mission_id)
+        audit_event(
+            AuditEvent.MISSION_CREATED,
+            "Mission created.",
+            mission_id=mission_id,
+            details={"waypoints": len(record.waypoints)},
+        )
+        return record
 
     def list_missions(self) -> list[MissionRecord]:
         with self._connect() as connection:
@@ -72,50 +86,53 @@ class MissionStorage:
         return [self.get_mission(int(row["id"])) for row in rows]
 
     def get_mission(self, mission_id: int) -> MissionRecord:
-        with self._connect() as connection:
-            mission_row = connection.execute(
-                """
-                SELECT id, name, created_at, updated_at
-                FROM missions
-                WHERE id = ?
-                """,
-                (mission_id,),
-            ).fetchone()
+        with log_context(mission_id=mission_id):
+            with self._connect() as connection:
+                mission_row = connection.execute(
+                    """
+                    SELECT id, name, created_at, updated_at
+                    FROM missions
+                    WHERE id = ?
+                    """,
+                    (mission_id,),
+                ).fetchone()
 
-            if mission_row is None:
-                raise MissionNotFoundError(mission_id)
+                if mission_row is None:
+                    logger.warning("Mission not found.")
+                    raise MissionNotFoundError(mission_id)
 
-            waypoint_rows = connection.execute(
-                """
-                SELECT
-                    sequence,
-                    latitude,
-                    longitude,
-                    altitude_meters,
-                    speed_meters_per_second
-                FROM mission_waypoints
-                WHERE mission_id = ?
-                ORDER BY sequence ASC
-                """,
-                (mission_id,),
-            ).fetchall()
+                waypoint_rows = connection.execute(
+                    """
+                    SELECT
+                        sequence,
+                        latitude,
+                        longitude,
+                        altitude_meters,
+                        speed_meters_per_second
+                    FROM mission_waypoints
+                    WHERE mission_id = ?
+                    ORDER BY sequence ASC
+                    """,
+                    (mission_id,),
+                ).fetchall()
 
-        return MissionRecord(
-            id=int(mission_row["id"]),
-            name=str(mission_row["name"]),
-            created_at=mission_row["created_at"],
-            updated_at=mission_row["updated_at"],
-            waypoints=[
-                Waypoint(
-                    sequence=int(row["sequence"]),
-                    latitude=float(row["latitude"]),
-                    longitude=float(row["longitude"]),
-                    altitude_meters=float(row["altitude_meters"]),
-                    speed_meters_per_second=float(row["speed_meters_per_second"]),
-                )
-                for row in waypoint_rows
-            ],
-        )
+            audit_event(AuditEvent.MISSION_LOADED, "Mission loaded.", mission_id=mission_id)
+            return MissionRecord(
+                id=int(mission_row["id"]),
+                name=str(mission_row["name"]),
+                created_at=mission_row["created_at"],
+                updated_at=mission_row["updated_at"],
+                waypoints=[
+                    Waypoint(
+                        sequence=int(row["sequence"]),
+                        latitude=float(row["latitude"]),
+                        longitude=float(row["longitude"]),
+                        altitude_meters=float(row["altitude_meters"]),
+                        speed_meters_per_second=float(row["speed_meters_per_second"]),
+                    )
+                    for row in waypoint_rows
+                ],
+            )
 
     def delete_mission(self, mission_id: int) -> None:
         with self._connect() as connection:
@@ -125,7 +142,10 @@ class MissionStorage:
             )
 
         if cursor.rowcount == 0:
+            logger.warning("Delete requested for missing mission.", extra={"mission_id": mission_id})
             raise MissionNotFoundError(mission_id)
+
+        audit_event(AuditEvent.MISSION_DELETED, "Mission deleted.", mission_id=mission_id)
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path)

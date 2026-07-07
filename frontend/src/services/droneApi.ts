@@ -1,4 +1,5 @@
 import { apiBaseUrl } from "./apiConfig";
+import { appLogger } from "./logger";
 
 export type DroneConnectionStatus = {
   connected: boolean;
@@ -112,6 +113,9 @@ export async function getDroneTelemetry(): Promise<DroneTelemetrySnapshot> {
   const response = await fetch(`${apiBaseUrl}/drone/telemetry`);
 
   if (!response.ok) {
+    appLogger.telemetryError("Drone telemetry request failed.", {
+      status: response.status
+    });
     throw new Error("Drone telemetry request failed.");
   }
 
@@ -136,6 +140,9 @@ async function parseDroneStatusResponse(
   response: Response
 ): Promise<DroneConnectionStatus> {
   if (!response.ok) {
+    appLogger.apiRequestFailure("Drone connection request failed.", {
+      status: response.status
+    });
     throw new Error("Drone connection request failed.");
   }
 
@@ -151,6 +158,9 @@ async function parseDroneActionResponse(
   response: Response
 ): Promise<DroneActionStatus> {
   if (!response.ok) {
+    appLogger.apiRequestFailure("Drone action request failed.", {
+      status: response.status
+    });
     throw new Error("Drone action request failed.");
   }
 

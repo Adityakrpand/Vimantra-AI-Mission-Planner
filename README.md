@@ -100,6 +100,28 @@ VIMANTRA_VALIDATION_MAXIMUM_SPEED_METERS_PER_SECOND=15
 
 Invalid configuration fails application startup with a clear validation error. See [docs/08_Deployment/Configuration.md](docs/08_Deployment/Configuration.md).
 
+## Logging
+
+Backend logging is centralized and configured through the same environment system as the rest of the application.
+
+Key variables:
+
+- `VIMANTRA_LOG_LEVEL`: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`.
+- `VIMANTRA_LOG_DIRECTORY`: directory for backend log files.
+- `VIMANTRA_LOG_MAX_FILE_SIZE_BYTES`: rotating log file size threshold.
+- `VIMANTRA_LOG_RETENTION_DAYS`: retained rotated and daily log count.
+- `VIMANTRA_LOG_CONSOLE_ENABLED`: enable console logs.
+- `VIMANTRA_LOG_FILE_ENABLED`: enable rotating and daily file logs.
+
+Default log files are stored in `logs/vimantra.log` and `logs/vimantra-daily.log`. To enable DEBUG mode locally:
+
+```powershell
+$env:VIMANTRA_LOG_LEVEL = "DEBUG"
+.\scripts\start_backend.ps1
+```
+
+See [docs/07_Testing/Logging.md](docs/07_Testing/Logging.md).
+
 ## Verification
 
 Backend tests:

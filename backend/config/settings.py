@@ -29,6 +29,13 @@ class AppSettings(BaseSettings):
     env: RuntimeEnvironment = Field(default=RuntimeEnvironment.DEVELOPMENT)
     debug: bool = Field(default=defaults.DEFAULT_DEBUG)
     log_level: str = Field(default=defaults.DEFAULT_LOG_LEVEL)
+    log_directory: Path = Field(default=Path(defaults.DEFAULT_LOG_DIRECTORY))
+    log_max_file_size_bytes: int = Field(
+        default=defaults.DEFAULT_LOG_MAX_FILE_SIZE_BYTES
+    )
+    log_retention_days: int = Field(default=defaults.DEFAULT_LOG_RETENTION_DAYS)
+    log_console_enabled: bool = Field(default=defaults.DEFAULT_LOG_CONSOLE_ENABLED)
+    log_file_enabled: bool = Field(default=defaults.DEFAULT_LOG_FILE_ENABLED)
     api_host: str = Field(default=defaults.DEFAULT_API_HOST)
     api_port: int = Field(default=defaults.DEFAULT_API_PORT)
     cors_origins: Annotated[list[str], NoDecode] = Field(
@@ -96,6 +103,18 @@ class AppSettings(BaseSettings):
 
         return value
 
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def _validate_log_level(cls, value: Any) -> str:
+        normalized = str(value).upper()
+        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if normalized not in valid_levels:
+            raise ValueError(
+                "VIMANTRA_LOG_LEVEL must be one of DEBUG, INFO, WARNING, ERROR, or CRITICAL."
+            )
+
+        return normalized
+
     @field_validator("database_path", mode="before")
     @classmethod
     def _validate_database_path_input(cls, value: Any) -> Any:
@@ -104,11 +123,24 @@ class AppSettings(BaseSettings):
 
         return value
 
+    @field_validator("log_directory", mode="before")
+    @classmethod
+    def _validate_log_directory_input(cls, value: Any) -> Any:
+        if isinstance(value, str) and value.strip() == "":
+            raise ValueError("VIMANTRA_LOG_DIRECTORY cannot be empty.")
+
+        return value
+
     @model_validator(mode="after")
     def _validate_settings(self) -> AppSettings:
         validate_not_empty_path(self.database_path, "VIMANTRA_DATABASE_PATH")
+        validate_not_empty_path(self.log_directory, "VIMANTRA_LOG_DIRECTORY")
         if self.api_port <= 0:
             raise ValueError("VIMANTRA_API_PORT must be greater than zero.")
+        if self.log_max_file_size_bytes <= 0:
+            raise ValueError("VIMANTRA_LOG_MAX_FILE_SIZE_BYTES must be greater than zero.")
+        if self.log_retention_days <= 0:
+            raise ValueError("VIMANTRA_LOG_RETENTION_DAYS must be greater than zero.")
         validate_positive(
             self.drone_connection_timeout_seconds,
             "VIMANTRA_DRONE_CONNECTION_TIMEOUT_SECONDS",
@@ -168,6 +200,13 @@ class AppSettings(BaseSettings):
             return self.database_path
 
         return repository_root() / self.database_path
+
+    @property
+    def resolved_log_directory(self) -> Path:
+        if self.log_directory.is_absolute():
+            return self.log_directory
+
+        return repository_root() / self.log_directory
 
     def mission_validation_config(self) -> MissionValidationConfig:
         return MissionValidationConfig(

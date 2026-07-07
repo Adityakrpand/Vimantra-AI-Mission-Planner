@@ -14,6 +14,9 @@ def test_settings_load_default_values() -> None:
 
     assert settings.env == RuntimeEnvironment.DEVELOPMENT
     assert settings.debug is True
+    assert settings.log_level == "INFO"
+    assert settings.log_directory == Path("logs")
+    assert settings.log_file_enabled is True
     assert settings.api_host == "127.0.0.1"
     assert settings.api_port == 8000
     assert settings.mavsdk_address == "udp://:14540"
@@ -27,6 +30,9 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
             [
                 "VIMANTRA_ENV=testing",
                 "VIMANTRA_DEBUG=false",
+                "VIMANTRA_LOG_LEVEL=DEBUG",
+                "VIMANTRA_LOG_DIRECTORY=logs/testing",
+                "VIMANTRA_LOG_FILE_ENABLED=false",
                 "VIMANTRA_API_PORT=9000",
                 "VIMANTRA_DATABASE_PATH=database/test.sqlite",
                 "VIMANTRA_MAVSDK_ADDRESS=udp://:14541",
@@ -41,6 +47,9 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
 
     assert settings.env == RuntimeEnvironment.TESTING
     assert settings.debug is False
+    assert settings.log_level == "DEBUG"
+    assert settings.log_directory == Path("logs/testing")
+    assert settings.log_file_enabled is False
     assert settings.api_port == 9000
     assert settings.database_path == Path("database/test.sqlite")
     assert settings.mavsdk_address == "udp://:14541"
@@ -52,6 +61,9 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
     ("variable", "value"),
     [
         ("VIMANTRA_ENV", "staging"),
+        ("VIMANTRA_LOG_LEVEL", "TRACE"),
+        ("VIMANTRA_LOG_MAX_FILE_SIZE_BYTES", "0"),
+        ("VIMANTRA_LOG_RETENTION_DAYS", "0"),
         ("VIMANTRA_VALIDATION_MINIMUM_ALTITUDE_METERS", "120"),
         ("VIMANTRA_VALIDATION_MINIMUM_SPEED_METERS_PER_SECOND", "0"),
         ("VIMANTRA_DRONE_CONNECTION_TIMEOUT_SECONDS", "0"),

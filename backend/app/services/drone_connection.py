@@ -7,6 +7,11 @@ from typing import Protocol
 from mavsdk import System
 
 from app.models.drone import DroneConnectionStatus
+from logging.audit import audit_event
+from logging.constants import AuditEvent
+from logging.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ConnectionState(Protocol):
@@ -58,11 +63,21 @@ class DroneConnectionService:
                 await system.connect(system_address=system_address)
                 await self._wait_until_connected(system, system_address, timeout_seconds)
         except TimeoutError as error:
+            logger.warning(
+                "Drone connection timed out system_address=%s timeout_seconds=%s",
+                system_address,
+                timeout_seconds,
+            )
             raise DroneConnectionTimeoutError(system_address, timeout_seconds) from error
 
         self._system = system
         self._system_address = system_address
         self._connected = True
+        audit_event(
+            AuditEvent.DRONE_CONNECTED,
+            "Drone connected.",
+            details={"system_address": system_address},
+        )
 
         return self.status(message="Connected to drone.")
 
@@ -70,6 +85,7 @@ class DroneConnectionService:
         self._system = None
         self._system_address = None
         self._connected = False
+        audit_event(AuditEvent.DRONE_DISCONNECTED, "Drone disconnected.")
 
         return self.status(message="Drone connection cleared.")
 

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import logging
-
 from app.models.mission import MissionRecord
+from logging.audit import audit_event
+from logging.constants import AuditEvent
+from logging.logger import get_logger
 from mission.validation_models import (
     MissionValidationRequest,
     MissionValidationResult,
@@ -20,7 +21,7 @@ from mission.validation_rules import (
     validate_waypoint_values,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MissionValidator:
@@ -59,6 +60,15 @@ class MissionValidator:
         if result.warnings:
             logger.warning("Mission contains warnings.")
 
+        audit_event(
+            AuditEvent.MISSION_VALIDATED,
+            "Mission validation completed.",
+            details={
+                "valid": result.valid,
+                "errors": len(result.errors),
+                "warnings": len(result.warnings),
+            },
+        )
         return result
 
 
