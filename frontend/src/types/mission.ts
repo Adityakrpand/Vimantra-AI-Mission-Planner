@@ -39,3 +39,19 @@ export type MissionValidationResult = {
   warnings: MissionValidationIssue[];
   statistics: MissionValidationStatistics;
 };
+
+export type PreFlightCheckStatus = "PASS" | "WARNING" | "FAIL";
+
+export type PreFlightCheck = {
+  name: string;
+  status: PreFlightCheckStatus;
+  mandatory: boolean;
+  message: string;
+};
+
+export type PreFlightResult = {
+  ready: boolean;
+  score: number;
+  checks: PreFlightCheck[];
+  warnings: PreFlightCheck[];
+};

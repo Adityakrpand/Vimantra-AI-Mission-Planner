@@ -35,6 +35,10 @@ Uploads a saved mission to the connected drone system.
 
 The mission is automatically validated before upload. Invalid missions return `400` with `error.code` set to `MISSION_INVALID` and the structured validation result in `error.details`.
 
+`POST /missions/{mission_id}/preflight`
+
+Runs pre-flight checks for a saved mission. Failed mandatory checks return `ready: false` in the response `data` field when called directly. Upload and start operations return `409` with `error.code` set to `PREFLIGHT_FAILED` when mandatory checks fail.
+
 ## Mission Validation
 
 `POST /api/missions/validate`

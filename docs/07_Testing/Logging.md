@@ -83,6 +83,7 @@ Audit logs record important operational events without exposing sensitive values
 - Application startup and shutdown.
 - Configuration loaded and configuration validation failure.
 - Mission created, loaded, deleted, validated, uploaded, and upload failed.
+- Pre-flight checks executed.
 - Drone connected and disconnected.
 - Vehicle armed and disarmed.
 - Mission started.

@@ -17,6 +17,7 @@ from config.validation import (
     validate_positive,
 )
 from mission.validation_rules import MissionValidationConfig
+from preflight.models import PreFlightConfig
 
 
 class AppSettings(BaseSettings):
@@ -85,6 +86,15 @@ class AppSettings(BaseSettings):
     )
     validation_close_waypoint_warning_meters: float = Field(
         default=defaults.DEFAULT_VALIDATION_CLOSE_WAYPOINT_WARNING_METERS
+    )
+    preflight_battery_warning_threshold_percent: float = Field(
+        default=defaults.DEFAULT_PREFLIGHT_BATTERY_WARNING_THRESHOLD_PERCENT
+    )
+    preflight_gps_minimum_satellites: int = Field(
+        default=defaults.DEFAULT_PREFLIGHT_GPS_MINIMUM_SATELLITES
+    )
+    preflight_optional_checks_enabled: bool = Field(
+        default=defaults.DEFAULT_PREFLIGHT_OPTIONAL_CHECKS_ENABLED
     )
 
     @field_validator("env", mode="before")
@@ -191,6 +201,15 @@ class AppSettings(BaseSettings):
                 "VIMANTRA_VALIDATION_MAXIMUM_WAYPOINTS must be greater than or "
                 "equal to VIMANTRA_VALIDATION_MINIMUM_WAYPOINTS."
             )
+        if not 0 <= self.preflight_battery_warning_threshold_percent <= 100:
+            raise ValueError(
+                "VIMANTRA_PREFLIGHT_BATTERY_WARNING_THRESHOLD_PERCENT must be "
+                "between 0 and 100."
+            )
+        if self.preflight_gps_minimum_satellites <= 0:
+            raise ValueError(
+                "VIMANTRA_PREFLIGHT_GPS_MINIMUM_SATELLITES must be greater than zero."
+            )
 
         return self
 
@@ -221,6 +240,15 @@ class AppSettings(BaseSettings):
             ),
             maximum_distance_warning_meters=self.validation_distance_warning_meters,
             close_waypoint_warning_meters=self.validation_close_waypoint_warning_meters,
+        )
+
+    def preflight_config(self) -> PreFlightConfig:
+        return PreFlightConfig(
+            battery_warning_threshold_percent=(
+                self.preflight_battery_warning_threshold_percent
+            ),
+            gps_minimum_satellites=self.preflight_gps_minimum_satellites,
+            optional_checks_enabled=self.preflight_optional_checks_enabled,
         )
 
 

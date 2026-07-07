@@ -1,6 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from app.dependencies import get_app_settings, get_drone_connection_service
+from app.dependencies import (
+    get_app_settings,
+    get_drone_connection_service,
+    get_mission_storage,
+    get_mission_validator,
+    get_preflight_service,
+)
 from app.models.api import ApiResponse, api_success
 from app.models.drone import (
     DroneActionStatus,
@@ -14,8 +20,12 @@ from app.services.drone_connection import (
     DroneConnectionTimeoutError,
     DroneNotConnectedError,
 )
+from app.services.mission_storage import MissionNotFoundError, MissionStorage
 from app.services.telemetry import TelemetryService
 from config.settings import AppSettings
+from mission.validator import MissionValidator
+from preflight.exceptions import PreFlightCheckFailedError
+from preflight.service import PreFlightService
 
 router = APIRouter(prefix="/drone", tags=["drone"])
 
@@ -101,11 +111,49 @@ async def disarm_drone(
 async def start_mission(
     request: Request,
     service: DroneConnectionService = Depends(get_drone_connection_service),
+    storage: MissionStorage = Depends(get_mission_storage),
+    mission_validator: MissionValidator = Depends(get_mission_validator),
+    preflight_service: PreFlightService = Depends(get_preflight_service),
+    settings: AppSettings = Depends(get_app_settings),
 ) -> ApiResponse[DroneActionStatus]:
     try:
+        mission_id = service.loaded_mission_id()
+        if mission_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Upload a mission before starting.",
+            )
+        try:
+            mission = storage.get_mission(mission_id)
+        except MissionNotFoundError as error:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Loaded mission {error.mission_id} is no longer available.",
+            ) from error
+
+        validation_result = mission_validator.validate(mission)
+        telemetry = await TelemetryService(
+            service,
+            timeout_seconds=settings.telemetry_read_timeout_seconds,
+        ).get_snapshot()
+        preflight_result = preflight_service.run(
+            mission=mission,
+            mission_validation=validation_result,
+            drone_status=service.status(),
+            telemetry=telemetry,
+            mission_loaded=True,
+        )
+        if not preflight_result.ready:
+            raise PreFlightCheckFailedError(preflight_result)
+
         return api_success(request, await DroneActionService(service).start_mission())
     except DroneNotConnectedError as error:
         raise _drone_not_connected() from error
+    except PreFlightCheckFailedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=error.result.model_dump(mode="json"),
+        ) from error
 
 
 def _drone_not_connected() -> HTTPException:

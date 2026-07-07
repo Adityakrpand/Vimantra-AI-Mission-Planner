@@ -12,6 +12,7 @@ Version 1.0 does not implement autonomous AI planning. AI mission planning is re
 - Connect to PX4 SITL through MAVSDK.
 - Upload missions to a connected drone system.
 - Validate missions before upload.
+- Run pre-flight checks before mission upload and mission start.
 - Arm, disarm, and start missions.
 - Monitor telemetry for position, altitude, speed, heading, battery, GPS fix, flight mode, and mission progress.
 - Verify the local backend-only workflow and the PX4 SITL workflow with repeatable scripts.
@@ -177,6 +178,18 @@ Every mission must pass the Mission Validation Engine before upload to PX4. The 
 Backend endpoints return a consistent envelope with `success`, `request_id`, `data`, and `error`. Request IDs are also returned in the `x-request-id` header and included in backend logs.
 
 See [docs/04_API/API_Response_Standard.md](docs/04_API/API_Response_Standard.md).
+
+## Pre-Flight Checks
+
+Pre-flight checks run after mission validation and before upload/start operations. Mandatory checks block unsafe mission flow; optional checks produce warnings.
+
+Key variables:
+
+- `VIMANTRA_PREFLIGHT_BATTERY_WARNING_THRESHOLD_PERCENT`
+- `VIMANTRA_PREFLIGHT_GPS_MINIMUM_SATELLITES`
+- `VIMANTRA_PREFLIGHT_OPTIONAL_CHECKS_ENABLED`
+
+See [docs/07_Testing/PreFlight.md](docs/07_Testing/PreFlight.md).
 
 Validation endpoint:
 

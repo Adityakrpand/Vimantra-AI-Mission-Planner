@@ -28,6 +28,7 @@ class AuditEvent(StrEnum):
     MISSION_UPLOADED = "mission_uploaded"
     MISSION_UPLOAD_FAILED = "mission_upload_failed"
     MISSION_VALIDATED = "mission_validated"
+    PREFLIGHT_EXECUTED = "preflight_executed"
     RETURN_TO_HOME_INITIATED = "return_to_home_initiated"
     TELEMETRY_TIMEOUT = "telemetry_timeout"
     UNHANDLED_EXCEPTION = "unhandled_exception"

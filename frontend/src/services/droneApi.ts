@@ -22,10 +22,12 @@ export type DroneTelemetrySnapshot = {
   speedMetersPerSecond: number | null;
   headingDegrees: number | null;
   batteryPercent: number | null;
+  gpsSatellites: number | null;
   gpsFixType: string | null;
   flightMode: string | null;
   missionCurrent: number | null;
   missionTotal: number | null;
+  homePositionAvailable: boolean;
   message: string;
 };
 
@@ -49,10 +51,12 @@ type ApiDroneTelemetrySnapshot = {
   speed_meters_per_second: number | null;
   heading_degrees: number | null;
   battery_percent: number | null;
+  gps_satellites: number | null;
   gps_fix_type: string | null;
   flight_mode: string | null;
   mission_current: number | null;
   mission_total: number | null;
+  home_position_available: boolean;
   message: string;
 };
 
@@ -132,10 +136,12 @@ export async function getDroneTelemetry(): Promise<DroneTelemetrySnapshot> {
     speedMetersPerSecond: snapshot.speed_meters_per_second,
     headingDegrees: snapshot.heading_degrees,
     batteryPercent: snapshot.battery_percent,
+    gpsSatellites: snapshot.gps_satellites,
     gpsFixType: snapshot.gps_fix_type,
     flightMode: snapshot.flight_mode,
     missionCurrent: snapshot.mission_current,
     missionTotal: snapshot.mission_total,
+    homePositionAvailable: snapshot.home_position_available,
     message: snapshot.message
   };
 }

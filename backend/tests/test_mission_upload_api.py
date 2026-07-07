@@ -17,11 +17,64 @@ class FakeMissionPlugin:
     async def upload_mission(self, mission_plan) -> None:
         self.upload_count = len(mission_plan.mission_items)
 
+    async def mission_progress(self):
+        yield FakeMissionProgress()
+
 
 class FakeDroneSystem:
     def __init__(self) -> None:
         self.mission = FakeMissionPlugin()
         self.core = object()
+        self.telemetry = FakeTelemetryPlugin()
+
+
+class FakeTelemetryPlugin:
+    async def position(self):
+        yield FakePosition()
+
+    async def velocity_ned(self):
+        yield FakeVelocity()
+
+    async def heading(self):
+        yield FakeHeading()
+
+    async def battery(self):
+        yield FakeBattery()
+
+    async def gps_info(self):
+        yield FakeGpsInfo()
+
+    async def flight_mode(self):
+        yield "HOLD"
+
+
+class FakePosition:
+    latitude_deg = 19.076
+    longitude_deg = 72.8777
+    relative_altitude_m = 80
+
+
+class FakeVelocity:
+    north_m_s = 0
+    east_m_s = 6
+
+
+class FakeHeading:
+    heading_deg = 90
+
+
+class FakeBattery:
+    remaining_percent = 0.8
+
+
+class FakeGpsInfo:
+    fix_type = "FIX_3D"
+    num_satellites = 10
+
+
+class FakeMissionProgress:
+    current = 0
+    total = 2
 
 
 @pytest.fixture
@@ -52,9 +105,9 @@ def test_upload_mission_returns_conflict_when_drone_disconnected(
 
     assert response.status_code == 409
     assert response.json()["success"] is False
-    assert response.json()["error"]["code"] == "CONFLICT"
+    assert response.json()["error"]["code"] == "PREFLIGHT_FAILED"
     assert response.json()["error"]["message"] == (
-        "Connect to PX4 SITL before uploading a mission."
+        "Pre-flight checks failed."
     )
 
 

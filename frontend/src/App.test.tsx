@@ -13,6 +13,7 @@ import {
 import {
   listMissions,
   loadMission,
+  runPreFlight,
   saveMission,
   uploadMission,
   validateMission
@@ -31,6 +32,7 @@ vi.mock("./services/droneApi", () => ({
 vi.mock("./services/missionApi", () => ({
   listMissions: vi.fn(),
   loadMission: vi.fn(),
+  runPreFlight: vi.fn(),
   saveMission: vi.fn(),
   uploadMission: vi.fn(),
   validateMission: vi.fn()
@@ -45,6 +47,7 @@ const mockedGetDroneStatus = vi.mocked(getDroneStatus);
 const mockedStartMission = vi.mocked(startMission);
 const mockedListMissions = vi.mocked(listMissions);
 const mockedLoadMission = vi.mocked(loadMission);
+const mockedRunPreFlight = vi.mocked(runPreFlight);
 const mockedSaveMission = vi.mocked(saveMission);
 const mockedUploadMission = vi.mocked(uploadMission);
 const mockedValidateMission = vi.mocked(validateMission);
@@ -64,10 +67,12 @@ describe("App", () => {
       speedMetersPerSecond: null,
       headingDegrees: null,
       batteryPercent: null,
+      gpsSatellites: null,
       gpsFixType: null,
       flightMode: null,
       missionCurrent: null,
       missionTotal: null,
+      homePositionAvailable: false,
       message: "Drone disconnected."
     });
     mockedGetDroneStatus.mockResolvedValue({
@@ -77,6 +82,7 @@ describe("App", () => {
     });
     mockedListMissions.mockResolvedValue([]);
     mockedLoadMission.mockReset();
+    mockedRunPreFlight.mockReset();
     mockedSaveMission.mockReset();
     mockedStartMission.mockReset();
     mockedUploadMission.mockReset();
@@ -162,10 +168,12 @@ describe("App", () => {
       speedMetersPerSecond: 5,
       headingDegrees: 125,
       batteryPercent: 76,
+      gpsSatellites: 10,
       gpsFixType: "FIX_3D",
       flightMode: "HOLD",
       missionCurrent: 2,
       missionTotal: 5,
+      homePositionAvailable: true,
       message: "Telemetry snapshot received."
     });
 
@@ -448,5 +456,52 @@ describe("App", () => {
       await screen.findByText("Uploaded mission Upload Ready.")
     ).toBeInTheDocument();
     expect(mockedUploadMission).toHaveBeenCalledWith(12);
+  });
+
+  it("runs pre-flight checks for a saved mission", async () => {
+    mockedSaveMission.mockResolvedValue({
+      id: 21,
+      name: "Preflight Ready",
+      createdAt: "2026-07-06T00:00:00.000Z",
+      updatedAt: "2026-07-06T00:00:00.000Z",
+      waypoints: [
+        {
+          id: "21-1",
+          sequence: 1,
+          latitude: 19.076,
+          longitude: 72.8777,
+          altitudeMeters: 80,
+          speedMetersPerSecond: 8
+        }
+      ]
+    });
+    mockedRunPreFlight.mockResolvedValue({
+      ready: true,
+      score: 100,
+      checks: [
+        {
+          name: "Vehicle Connected",
+          status: "PASS",
+          mandatory: true,
+          message: "Vehicle connection is active."
+        }
+      ],
+      warnings: []
+    });
+
+    render(<App />);
+    await screen.findByText("No saved missions");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add WP" }));
+    fireEvent.change(screen.getByLabelText("Mission name"), {
+      target: { value: "Preflight Ready" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("Saved mission Preflight Ready.");
+    fireEvent.click(screen.getByRole("button", { name: "Pre-Flight Check" }));
+
+    expect(await screen.findByText("Pre-flight checks passed.")).toBeInTheDocument();
+    expect(screen.getByText("Pre-Flight Pass - Score 100")).toBeInTheDocument();
+    expect(mockedRunPreFlight).toHaveBeenCalledWith(21);
   });
 });

@@ -3,8 +3,9 @@ from collections.abc import AsyncIterator, Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from app.dependencies import get_drone_connection_service
+from app.dependencies import get_drone_connection_service, get_mission_storage
 from app.main import create_app
+from app.services.mission_storage import MissionStorage
 from app.services.drone_connection import DroneConnectionService
 
 
@@ -97,6 +98,7 @@ class FakeBattery:
 
 class FakeGpsInfo:
     fix_type = "FIX_3D"
+    num_satellites = 10
 
 
 class FakeMissionProgress:
@@ -106,20 +108,24 @@ class FakeMissionProgress:
 
 
 @pytest.fixture
-def client() -> Iterator[TestClient]:
+def client(tmp_path) -> Iterator[tuple[TestClient, DroneConnectionService, MissionStorage]]:
     service = DroneConnectionService(
         system_factory=lambda: FakeDroneSystem([FakeConnectionState(True)])
     )
+    storage = MissionStorage(tmp_path / "drone-api.sqlite")
+    storage.initialize()
     app = create_app()
     app.dependency_overrides[get_drone_connection_service] = lambda: service
+    app.dependency_overrides[get_mission_storage] = lambda: storage
 
     with TestClient(app) as test_client:
-        yield test_client
+        yield test_client, service, storage
 
     app.dependency_overrides.clear()
 
 
-def test_drone_status_defaults_to_disconnected(client: TestClient) -> None:
+def test_drone_status_defaults_to_disconnected(client) -> None:
+    client, _, _ = client
     response = client.get("/drone/status")
 
     assert response.status_code == 200
@@ -130,7 +136,8 @@ def test_drone_status_defaults_to_disconnected(client: TestClient) -> None:
     }
 
 
-def test_drone_telemetry_defaults_to_disconnected(client: TestClient) -> None:
+def test_drone_telemetry_defaults_to_disconnected(client) -> None:
+    client, _, _ = client
     response = client.get("/drone/telemetry")
 
     assert response.status_code == 200
@@ -138,7 +145,8 @@ def test_drone_telemetry_defaults_to_disconnected(client: TestClient) -> None:
     assert _data(response)["message"] == "Drone disconnected."
 
 
-def test_connect_and_disconnect_drone(client: TestClient) -> None:
+def test_connect_and_disconnect_drone(client) -> None:
+    client, _, _ = client
     connect_response = client.post(
         "/drone/connect",
         json={"system_address": "udp://:14540", "timeout_seconds": 1},
@@ -157,8 +165,9 @@ def test_connect_and_disconnect_drone(client: TestClient) -> None:
 
 
 def test_arm_and_disarm_return_conflict_when_disconnected(
-    client: TestClient,
+    client,
 ) -> None:
+    client, _, _ = client
     arm_response = client.post("/drone/arm")
     disarm_response = client.post("/drone/disarm")
     start_response = client.post("/drone/start-mission")
@@ -173,7 +182,8 @@ def test_arm_and_disarm_return_conflict_when_disconnected(
     assert start_response.status_code == 409
 
 
-def test_arm_and_disarm_connected_drone(client: TestClient) -> None:
+def test_arm_and_disarm_connected_drone(client) -> None:
+    client, _, _ = client
     client.post(
         "/drone/connect",
         json={"system_address": "udp://:14540", "timeout_seconds": 1},
@@ -196,7 +206,23 @@ def test_arm_and_disarm_connected_drone(client: TestClient) -> None:
     }
 
 
-def test_start_mission_connected_drone(client: TestClient) -> None:
+def test_start_mission_requires_uploaded_mission(client) -> None:
+    client, _, _ = client
+    client.post(
+        "/drone/connect",
+        json={"system_address": "udp://:14540", "timeout_seconds": 1},
+    )
+
+    response = client.post("/drone/start-mission")
+
+    assert response.status_code == 409
+    assert response.json()["error"]["message"] == "Upload a mission before starting."
+
+
+def test_start_mission_connected_drone(client) -> None:
+    client, service, storage = client
+    mission = storage.save_mission(create_payload_model())
+    service.mark_mission_loaded(mission.id)
     client.post(
         "/drone/connect",
         json={"system_address": "udp://:14540", "timeout_seconds": 1},
@@ -212,7 +238,8 @@ def test_start_mission_connected_drone(client: TestClient) -> None:
     }
 
 
-def test_drone_telemetry_connected_drone(client: TestClient) -> None:
+def test_drone_telemetry_connected_drone(client) -> None:
+    client, _, _ = client
     client.post(
         "/drone/connect",
         json={"system_address": "udp://:14540", "timeout_seconds": 1},
@@ -226,6 +253,30 @@ def test_drone_telemetry_connected_drone(client: TestClient) -> None:
     assert _data(response)["speed_meters_per_second"] == 6
     assert _data(response)["mission_current"] == 1
     assert _data(response)["mission_total"] == 3
+
+
+def create_payload_model():
+    from app.models.mission import MissionCreate, Waypoint
+
+    return MissionCreate(
+        name="Loaded Drone Mission",
+        waypoints=[
+            Waypoint(
+                sequence=1,
+                latitude=19.076,
+                longitude=72.8777,
+                altitude_meters=80,
+                speed_meters_per_second=8,
+            ),
+            Waypoint(
+                sequence=2,
+                latitude=19.0821,
+                longitude=72.8903,
+                altitude_meters=90,
+                speed_meters_per_second=9,
+            ),
+        ],
+    )
 
 
 def _data(response):

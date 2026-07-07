@@ -81,10 +81,12 @@ class TelemetryService:
             speed_meters_per_second=_ground_speed(velocity),
             heading_degrees=_get(heading, "heading_deg"),
             battery_percent=_battery_percent(battery),
+            gps_satellites=_get(gps_info, "num_satellites"),
             gps_fix_type=_as_text(_get(gps_info, "fix_type")),
             flight_mode=_as_text(flight_mode),
             mission_current=_get(progress, "current"),
             mission_total=_get(progress, "total"),
+            home_position_available=position is not None,
             message="Telemetry snapshot received.",
         )
 

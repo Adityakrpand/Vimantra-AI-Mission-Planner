@@ -21,6 +21,9 @@ def test_settings_load_default_values() -> None:
     assert settings.api_port == 8000
     assert settings.mavsdk_address == "udp://:14540"
     assert settings.mission_validation_config().minimum_altitude_meters == 5
+    assert settings.preflight_config().battery_warning_threshold_percent == 30
+    assert settings.preflight_config().gps_minimum_satellites == 6
+    assert settings.preflight_config().optional_checks_enabled is True
 
 
 def test_settings_load_environment_overrides(tmp_path: Path) -> None:
@@ -37,6 +40,9 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
                 "VIMANTRA_DATABASE_PATH=database/test.sqlite",
                 "VIMANTRA_MAVSDK_ADDRESS=udp://:14541",
                 "VIMANTRA_VALIDATION_MINIMUM_ALTITUDE_METERS=10",
+                "VIMANTRA_PREFLIGHT_BATTERY_WARNING_THRESHOLD_PERCENT=40",
+                "VIMANTRA_PREFLIGHT_GPS_MINIMUM_SATELLITES=8",
+                "VIMANTRA_PREFLIGHT_OPTIONAL_CHECKS_ENABLED=false",
                 "VIMANTRA_CORS_ORIGINS=http://localhost:3000,http://localhost:5173",
             ]
         ),
@@ -54,6 +60,9 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
     assert settings.database_path == Path("database/test.sqlite")
     assert settings.mavsdk_address == "udp://:14541"
     assert settings.validation_minimum_altitude_meters == 10
+    assert settings.preflight_battery_warning_threshold_percent == 40
+    assert settings.preflight_gps_minimum_satellites == 8
+    assert settings.preflight_optional_checks_enabled is False
     assert settings.cors_origins == ["http://localhost:3000", "http://localhost:5173"]
 
 
@@ -68,6 +77,8 @@ def test_settings_load_environment_overrides(tmp_path: Path) -> None:
         ("VIMANTRA_VALIDATION_MINIMUM_SPEED_METERS_PER_SECOND", "0"),
         ("VIMANTRA_DRONE_CONNECTION_TIMEOUT_SECONDS", "0"),
         ("VIMANTRA_DATABASE_PATH", ""),
+        ("VIMANTRA_PREFLIGHT_BATTERY_WARNING_THRESHOLD_PERCENT", "101"),
+        ("VIMANTRA_PREFLIGHT_GPS_MINIMUM_SATELLITES", "0"),
     ],
 )
 def test_settings_reject_invalid_configuration(

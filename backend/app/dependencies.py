@@ -4,6 +4,7 @@ from app.services.drone_connection import DroneConnectionService
 from app.services.mission_storage import MissionStorage
 from config.settings import AppSettings, get_settings
 from mission.validator import MissionValidator
+from preflight.service import PreFlightService
 
 
 @lru_cache
@@ -21,6 +22,11 @@ def get_drone_connection_service() -> DroneConnectionService:
 @lru_cache
 def get_mission_validator() -> MissionValidator:
     return MissionValidator(get_settings().mission_validation_config())
+
+
+@lru_cache
+def get_preflight_service() -> PreFlightService:
+    return PreFlightService(get_settings().preflight_config())
 
 
 def get_app_settings() -> AppSettings:

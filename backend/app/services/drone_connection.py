@@ -51,6 +51,7 @@ class DroneConnectionService:
         self._system: DroneSystem | None = None
         self._system_address: str | None = None
         self._connected = False
+        self._loaded_mission_id: int | None = None
 
     async def connect(
         self,
@@ -85,6 +86,7 @@ class DroneConnectionService:
         self._system = None
         self._system_address = None
         self._connected = False
+        self._loaded_mission_id = None
         audit_event(AuditEvent.DRONE_DISCONNECTED, "Drone disconnected.")
 
         return self.status(message="Drone connection cleared.")
@@ -108,6 +110,12 @@ class DroneConnectionService:
             raise DroneNotConnectedError()
 
         return self._system
+
+    def mark_mission_loaded(self, mission_id: int) -> None:
+        self._loaded_mission_id = mission_id
+
+    def loaded_mission_id(self) -> int | None:
+        return self._loaded_mission_id
 
     async def _wait_until_connected(
         self,

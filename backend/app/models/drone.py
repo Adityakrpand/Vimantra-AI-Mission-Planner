@@ -34,8 +34,10 @@ class DroneTelemetrySnapshot(BaseModel):
     speed_meters_per_second: float | None = None
     heading_degrees: float | None = None
     battery_percent: float | None = None
+    gps_satellites: int | None = None
     gps_fix_type: str | None = None
     flight_mode: str | None = None
     mission_current: int | None = None
     mission_total: int | None = None
+    home_position_available: bool = False
     message: str

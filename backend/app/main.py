@@ -151,6 +151,8 @@ def _json_response(request: Request, status_code: int, content: dict) -> JSONRes
 def _http_error_code(exc: HTTPException) -> str:
     if isinstance(exc.detail, dict) and "valid" in exc.detail and "errors" in exc.detail:
         return "MISSION_INVALID"
+    if isinstance(exc.detail, dict) and "ready" in exc.detail and "checks" in exc.detail:
+        return "PREFLIGHT_FAILED"
 
     return {
         status.HTTP_400_BAD_REQUEST: "BAD_REQUEST",
@@ -166,6 +168,8 @@ def _http_error_message(exc: HTTPException) -> str:
         return exc.detail
     if isinstance(exc.detail, dict) and "valid" in exc.detail and "errors" in exc.detail:
         return "Mission validation failed."
+    if isinstance(exc.detail, dict) and "ready" in exc.detail and "checks" in exc.detail:
+        return "Pre-flight checks failed."
 
     return "API request failed."
 

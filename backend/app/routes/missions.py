@@ -1,16 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from app.dependencies import get_app_settings, get_mission_storage, get_mission_validator
+from app.dependencies import (
+    get_app_settings,
+    get_mission_storage,
+    get_mission_validator,
+    get_preflight_service,
+)
 from app.dependencies import get_drone_connection_service
 from app.models.api import ApiResponse, DeleteResult, api_success
 from app.models.mission import MissionCreate, MissionRecord, MissionUploadStatus
 from app.services.drone_connection import DroneConnectionService, DroneNotConnectedError
 from app.services.mission_storage import MissionNotFoundError, MissionStorage
 from app.services.mission_upload import MissionUploadService
+from app.services.telemetry import TelemetryService
 from config.settings import AppSettings
 from mission.exceptions import MissionValidationError
 from mission.validation_models import MissionValidationRequest, MissionValidationResult
 from mission.validator import MissionValidator
+from preflight.exceptions import PreFlightCheckFailedError
+from preflight.models import PreFlightResult
+from preflight.service import PreFlightService
 
 router = APIRouter(prefix="/missions", tags=["missions"])
 api_router = APIRouter(prefix="/api/missions", tags=["mission validation"])
@@ -66,13 +75,16 @@ async def upload_mission(
     storage: MissionStorage = Depends(get_mission_storage),
     drone_connection: DroneConnectionService = Depends(get_drone_connection_service),
     mission_validator: MissionValidator = Depends(get_mission_validator),
+    preflight_service: PreFlightService = Depends(get_preflight_service),
     settings: AppSettings = Depends(get_app_settings),
 ) -> ApiResponse[MissionUploadStatus]:
     upload_service = MissionUploadService(
         storage,
         drone_connection,
         mission_validator,
+        preflight_service,
         upload_timeout_seconds=settings.mission_upload_timeout_seconds,
+        telemetry_timeout_seconds=settings.telemetry_read_timeout_seconds,
     )
 
     try:
@@ -89,6 +101,41 @@ async def upload_mission(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error.result.model_dump(),
         ) from error
+    except PreFlightCheckFailedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=error.result.model_dump(mode="json"),
+        ) from error
+
+
+@router.post("/{mission_id}/preflight", response_model=ApiResponse[PreFlightResult])
+async def run_preflight(
+    request: Request,
+    mission_id: int,
+    storage: MissionStorage = Depends(get_mission_storage),
+    drone_connection: DroneConnectionService = Depends(get_drone_connection_service),
+    mission_validator: MissionValidator = Depends(get_mission_validator),
+    preflight_service: PreFlightService = Depends(get_preflight_service),
+    settings: AppSettings = Depends(get_app_settings),
+) -> ApiResponse[PreFlightResult]:
+    try:
+        mission = storage.get_mission(mission_id)
+    except MissionNotFoundError as error:
+        raise _mission_not_found(error.mission_id) from error
+
+    validation_result = mission_validator.validate(mission)
+    telemetry = await TelemetryService(
+        drone_connection,
+        timeout_seconds=settings.telemetry_read_timeout_seconds,
+    ).get_snapshot()
+    result = preflight_service.run(
+        mission=mission,
+        mission_validation=validation_result,
+        drone_status=drone_connection.status(),
+        telemetry=telemetry,
+        mission_loaded=True,
+    )
+    return api_success(request, result)
 
 
 @api_router.post("/validate", response_model=ApiResponse[MissionValidationResult])

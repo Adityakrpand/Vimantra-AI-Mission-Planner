@@ -2,6 +2,7 @@ import type {
   MissionRecord,
   MissionValidationResult,
   MissionUploadStatus,
+  PreFlightResult,
   Waypoint
 } from "../types/mission";
 import { apiBaseUrl } from "./apiConfig";
@@ -113,6 +114,24 @@ export async function uploadMission(
     waypointCount: status.waypoint_count,
     message: status.message
   };
+}
+
+export async function runPreFlight(
+  missionId: number
+): Promise<PreFlightResult> {
+  const response = await fetch(`${apiBaseUrl}/missions/${missionId}/preflight`, {
+    method: "POST"
+  });
+
+  if (!response.ok) {
+    appLogger.apiRequestFailure("Pre-flight check failed.", {
+      missionId,
+      status: response.status
+    });
+    throw new Error("Pre-flight check failed.");
+  }
+
+  return parseApiResponse<PreFlightResult>(response, "Pre-flight check failed.");
 }
 
 export async function validateMission(

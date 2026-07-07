@@ -15,12 +15,14 @@ import {
 import {
   listMissions,
   loadMission,
+  runPreFlight,
   saveMission,
   uploadMission,
   validateMission
 } from "./services/missionApi";
 import type {
   MissionRecord,
+  PreFlightResult,
   MissionValidationResult,
   Waypoint
 } from "./types/mission";
@@ -53,10 +55,12 @@ const emptyTelemetrySnapshot: DroneTelemetrySnapshot = {
   speedMetersPerSecond: null,
   headingDegrees: null,
   batteryPercent: null,
+  gpsSatellites: null,
   gpsFixType: null,
   flightMode: null,
   missionCurrent: null,
   missionTotal: null,
+  homePositionAvailable: false,
   message: "Drone disconnected."
 };
 
@@ -163,6 +167,8 @@ export function App() {
   );
   const [validationResult, setValidationResult] =
     useState<MissionValidationResult | null>(null);
+  const [preFlightResult, setPreFlightResult] =
+    useState<PreFlightResult | null>(null);
   const [droneStatus, setDroneStatus] = useState<DroneConnectionStatus>({
     connected: false,
     systemAddress: null,
@@ -179,6 +185,7 @@ export function App() {
   const [isLoadingMission, setIsLoadingMission] = useState(false);
   const [isUploadingMission, setIsUploadingMission] = useState(false);
   const [isValidatingMission, setIsValidatingMission] = useState(false);
+  const [isRunningPreFlight, setIsRunningPreFlight] = useState(false);
   const missionSummary = useMemo(
     () => calculateMissionSummary(waypoints),
     [waypoints]
@@ -282,6 +289,7 @@ export function App() {
 
   const addWaypoint = () => {
     setValidationResult(null);
+    setPreFlightResult(null);
     setWaypoints((currentWaypoints) => [
       ...currentWaypoints,
       createWaypoint(currentWaypoints.length)
@@ -299,6 +307,7 @@ export function App() {
       const savedMission = await saveMission(missionName, waypoints);
       setMissionName(savedMission.name);
       setSelectedMissionId(savedMission.id);
+      setPreFlightResult(null);
       setStatusMessage(`Saved mission ${savedMission.name}.`);
       await refreshSavedMissions();
     } catch {
@@ -321,6 +330,7 @@ export function App() {
       setWaypoints(loadedMission.waypoints);
       setSelectedMissionId(loadedMission.id);
       setValidationResult(null);
+      setPreFlightResult(null);
       setStatusMessage(`Loaded mission ${loadedMission.name}.`);
     } catch {
       setStatusMessage("Mission load failed. Check backend connection.");
@@ -348,6 +358,28 @@ export function App() {
       setStatusMessage("Mission upload failed. Check drone connection.");
     } finally {
       setIsUploadingMission(false);
+    }
+  };
+
+  const handlePreFlight = async () => {
+    if (selectedMissionId === null) {
+      setStatusMessage("Save or load a mission before pre-flight checks.");
+      return;
+    }
+
+    setIsRunningPreFlight(true);
+    try {
+      const result = await runPreFlight(selectedMissionId);
+      setPreFlightResult(result);
+      setStatusMessage(
+        result.ready
+          ? "Pre-flight checks passed."
+          : "Pre-flight checks failed."
+      );
+    } catch {
+      setStatusMessage("Pre-flight check failed. Check drone and telemetry.");
+    } finally {
+      setIsRunningPreFlight(false);
     }
   };
 
@@ -434,6 +466,7 @@ export function App() {
 
   const deleteWaypoint = (waypointId: string) => {
     setValidationResult(null);
+    setPreFlightResult(null);
     setWaypoints((currentWaypoints) =>
       resequenceWaypoints(
         currentWaypoints.filter((waypoint) => waypoint.id !== waypointId)
@@ -447,6 +480,7 @@ export function App() {
     value: number
   ) => {
     setValidationResult(null);
+    setPreFlightResult(null);
     const limits = {
       altitudeMeters: { minimum: 1, maximum: 500 },
       speedMetersPerSecond: { minimum: 1, maximum: 40 }
@@ -508,6 +542,7 @@ export function App() {
                 onChange={(event) => {
                   setMissionName(event.target.value);
                   setValidationResult(null);
+                  setPreFlightResult(null);
                 }}
                 value={missionName}
               />
@@ -590,6 +625,7 @@ export function App() {
                   setWaypoints([]);
                   setSelectedMissionId(null);
                   setValidationResult(null);
+                  setPreFlightResult(null);
                   setStatusMessage("Mission cleared.");
                 }}
               />
@@ -597,12 +633,18 @@ export function App() {
             <div aria-live="polite" className="max-w-xl text-sm">
               <p className="truncate text-zinc-400">{statusMessage}</p>
               <ValidationSummary result={validationResult} />
+              <PreFlightSummary result={preFlightResult} />
             </div>
             <div className="flex gap-2">
               <ControlButton
                 label={isValidatingMission ? "Validating" : "Validate Mission"}
                 disabled={isValidatingMission}
                 onClick={handleValidateMission}
+              />
+              <ControlButton
+                label={isRunningPreFlight ? "Checking" : "Pre-Flight Check"}
+                disabled={isRunningPreFlight || selectedMissionId === null}
+                onClick={handlePreFlight}
               />
               <ControlButton
                 label={isUploadingMission ? "Uploading" : "Upload"}
@@ -829,6 +871,40 @@ function ValidationSummary({
               {error.waypoint === null ? "" : `WP${error.waypoint}: `}
               {error.message}
             </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function PreFlightSummary({ result }: { result: PreFlightResult | null }) {
+  if (result === null) {
+    return null;
+  }
+
+  const toneClass = result.ready ? "text-emerald-300" : "text-red-300";
+  const failingChecks = result.checks.filter((check) => check.status === "FAIL");
+  const warningChecks = result.checks.filter(
+    (check) => check.status === "WARNING"
+  );
+
+  return (
+    <div className="mt-1 max-h-24 overflow-y-auto">
+      <p className={`text-xs font-semibold ${toneClass}`}>
+        Pre-Flight {result.ready ? "Pass" : "Fail"} - Score {result.score}
+      </p>
+      {warningChecks.length > 0 && (
+        <ul className="mt-1 space-y-1 text-xs text-amber-300">
+          {warningChecks.map((check) => (
+            <li key={check.name}>{check.name}: {check.message}</li>
+          ))}
+        </ul>
+      )}
+      {failingChecks.length > 0 && (
+        <ul className="mt-1 space-y-1 text-xs text-red-300">
+          {failingChecks.map((check) => (
+            <li key={check.name}>{check.name}: {check.message}</li>
           ))}
         </ul>
       )}
