@@ -22,7 +22,7 @@ export function MapWorkspace({ waypoints }: { waypoints: Waypoint[] }) {
   return (
     <section
       aria-label="Map workspace"
-      className="relative min-h-0 bg-zinc-950"
+      className="relative h-[420px] min-h-0 bg-zinc-950 lg:h-auto"
     >
       <MapContainer
         center={defaultCenter}

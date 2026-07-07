@@ -585,7 +585,7 @@ export function App() {
           </div>
         </header>
 
-        <section className="grid min-h-0 flex-1 grid-cols-[280px_minmax(420px,1fr)_320px] grid-rows-[1fr_auto] gap-px bg-zinc-800">
+        <section className="grid min-h-0 flex-1 grid-cols-1 gap-px bg-zinc-800 lg:grid-cols-[280px_minmax(420px,1fr)_320px] lg:grid-rows-[1fr_auto]">
           <aside
             aria-label="Mission planner"
             className="min-h-0 bg-zinc-925 p-4"
@@ -671,9 +671,9 @@ export function App() {
 
           <section
             aria-label="Mission controls"
-            className="col-span-3 flex items-center justify-between bg-zinc-900 px-4 py-3"
+            className="flex flex-col gap-3 bg-zinc-900 px-4 py-3 lg:col-span-3 lg:flex-row lg:items-center lg:justify-between"
           >
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <ControlButton
                 label={
                   isConnectingDrone
@@ -712,12 +712,12 @@ export function App() {
                 }}
               />
             </div>
-            <div aria-live="polite" className="max-w-xl text-sm">
+            <div aria-live="polite" className="w-full text-sm lg:max-w-xl">
               <p className="truncate text-zinc-400">{statusMessage}</p>
               <ValidationSummary result={validationResult} />
               <PreFlightSummary result={preFlightResult} />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <ControlButton
                 label={isValidatingMission ? "Validating" : "Validate Mission"}
                 disabled={isValidatingMission}
