@@ -4,7 +4,7 @@
 
 | Version | Status |
 | --- | --- |
-| `v1.0.0-rc1` | Release candidate, security reports accepted |
+| `v1.0.0` | Supported, security reports accepted |
 
 ## Reporting a Vulnerability
 

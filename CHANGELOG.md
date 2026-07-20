@@ -2,9 +2,9 @@
 
 All notable changes for Vimantra AI Mission Planner are documented here.
 
-## v1.0.0-rc1
+## v1.0.0 - 2026-07-19
 
-Release candidate for the first public V1 release.
+First stable V1 release.
 
 ### Added
 
@@ -26,6 +26,9 @@ Release candidate for the first public V1 release.
 - API parsing now returns user-friendly errors for malformed responses.
 - Mission Analytics and Mission Validation panels now share consistent loading, empty, and unavailable states.
 - Backend package discovery includes the Sprint 17 validation package.
+- FastAPI application lifecycle uses the supported lifespan API.
+- PX4 workflow verification supports standardized API envelopes, explicit pre-flight checks, mission completion monitoring, and final disarm.
+- Local demo data is reproducible from three realistic sample missions.
 
 ### Known Limitations
 

@@ -31,11 +31,12 @@ Use this checklist for every tagged release.
 - Security notes reviewed.
 - Rollback path documented when applicable.
 
-## v1.0.0-rc1 QA Snapshot
+## v1.0.0 QA Snapshot
 
 - Backend tests: `108 passed`.
 - Frontend tests: `15 passed`.
 - Frontend production build: passed.
-- CHANGELOG created.
+- CHANGELOG and stable release notes updated.
 - Mission Analytics and Mission Validation panels reviewed for consistent states.
-- PX4 SITL workflow remains an external manual check when PX4 is available.
+- Backend-only PX4 workflow verifier: passed.
+- Full PX4 SITL workflow: must be recorded from an environment with PX4 SITL running before the release tag is created.

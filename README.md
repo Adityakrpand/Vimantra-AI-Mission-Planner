@@ -1,6 +1,6 @@
 # Vimantra AI Mission Planner
 
-Vimantra AI Mission Planner is a local ground-control mission planning application for PX4 SITL. Version `v1.0.0-rc1` includes a React mission-planning frontend, a FastAPI backend, SQLite mission storage, MAVSDK integration, PX4 SITL workflow support, mission upload/execution controls, and telemetry monitoring.
+Vimantra AI Mission Planner is a local ground-control mission planning application for PX4 SITL. Version `v1.0.0` includes a React mission-planning frontend, a FastAPI backend, SQLite mission storage, MAVSDK integration, PX4 SITL workflow support, mission upload/execution controls, and telemetry monitoring.
 
 Version 1.0 does not implement autonomous AI planning. AI mission planning is reserved for the Version 2.0 roadmap.
 
@@ -224,9 +224,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md), [ARCHITECTURE.md](ARCHITECTURE.md), [REL
 
 ## Release Status
 
-Current release candidate: `v1.0.0-rc1`.
+Current release: `v1.0.0`.
 
-The application is ready for local evaluation and PX4 SITL validation. The only external runtime requirement for the complete flight workflow is a running PX4 SITL instance reachable by MAVSDK.
+The application is ready for local evaluation and PX4 SITL operation. The complete flight workflow requires a running PX4 SITL instance reachable by MAVSDK.
+
+Release details are available in [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md).
 
 ## Maintainer
 

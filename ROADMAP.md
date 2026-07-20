@@ -4,7 +4,7 @@ This roadmap describes the planned product direction for Vimantra AI Mission Pla
 
 ## Version 1.0: Local PX4 SITL Mission Planner
 
-Status: `v1.0.0-rc1`
+Status: released as `v1.0.0`
 
 Scope:
 

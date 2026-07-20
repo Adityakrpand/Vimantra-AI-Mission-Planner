@@ -1,4 +1,6 @@
 import logging
+from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -20,6 +22,15 @@ from logging.middleware import RequestLoggingMiddleware
 logger = get_logger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    audit_event(AuditEvent.APPLICATION_STARTUP, "Application startup initiated.")
+    try:
+        yield
+    finally:
+        audit_event(AuditEvent.APPLICATION_SHUTDOWN, "Application shutdown completed.")
+
+
 def create_app() -> FastAPI:
     try:
         settings = get_settings()
@@ -33,11 +44,11 @@ def create_app() -> FastAPI:
 
     configure_logging(settings)
     audit_event(AuditEvent.CONFIGURATION_LOADED, "Configuration loaded.")
-    audit_event(AuditEvent.APPLICATION_STARTUP, "Application startup initiated.")
     application = FastAPI(
         title="Vimantra AI Mission Planner API",
-        version="1.0.0-rc1",
+        version="1.0.0",
         debug=False,
+        lifespan=lifespan,
     )
     application.add_middleware(RequestLoggingMiddleware)
     application.add_middleware(
@@ -131,10 +142,6 @@ def create_app() -> FastAPI:
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             response.model_dump(mode="json"),
         )
-
-    @application.on_event("shutdown")
-    async def audit_shutdown() -> None:
-        audit_event(AuditEvent.APPLICATION_SHUTDOWN, "Application shutdown completed.")
 
     return application
 
