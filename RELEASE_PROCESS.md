@@ -13,7 +13,7 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 Current release candidate:
 
 ```text
-v1.0.0-rc1
+v1.0.0
 ```
 
 ### Major

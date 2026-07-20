@@ -1,6 +1,6 @@
 [project]
 name = "vimantra-backend"
-version = "1.0.0rc1"
+version = "1.0.0"
 description = "Backend service for Vimantra AI Mission Planner."
 requires-python = ">=3.12"
 dependencies = [

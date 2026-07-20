@@ -134,8 +134,8 @@ Verification:
 
 ## Minor Issues / Notes
 
-- Backend tests still show FastAPI `on_event` deprecation warnings. This is not
-  release-blocking, but should be addressed in a future framework maintenance sprint.
+- Backend tests showed FastAPI `on_event` deprecation warnings during this QA pass.
+  Sprint 20 resolved them by migrating application lifecycle handling to lifespan.
 - Mission list can contain many duplicate names from stress/QA testing. The list
   remains scrollable, but production seed/test data should be kept clean before
   public demos.
@@ -153,8 +153,7 @@ Verification:
 ## Recommendations
 
 - Run one final PX4 SITL connected workflow before tagging the public release.
-- Consider migrating FastAPI shutdown handling from `on_event` to lifespan in a
-  future maintenance sprint.
+- FastAPI shutdown handling was migrated from `on_event` to lifespan in Sprint 20.
 - Keep release/demo databases clean or provide a reset script for demo data.
 - Consider virtualizing very large waypoint lists in a future performance sprint
   if 1000+ waypoint missions become common in the UI.

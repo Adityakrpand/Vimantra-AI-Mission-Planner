@@ -5,7 +5,7 @@ This module verifies the planned Vimantra flow:
 1. Backend health is reachable.
 2. A mission can be created and loaded.
 3. Drone status and telemetry endpoints respond.
-4. With PX4 SITL running, the app can connect, upload, arm, start, and read telemetry.
+4. With PX4 SITL running, the app can connect, verify telemetry, run pre-flight checks, upload, arm, start, monitor mission completion, and disarm.
 
 ## Backend-only check
 
@@ -58,9 +58,13 @@ The script calls the same backend endpoints used by the frontend:
 - `GET /drone/status`
 - `GET /drone/telemetry`
 - `POST /drone/connect`
+- `POST /missions/{mission_id}/preflight`
 - `POST /missions/{mission_id}/upload`
 - `POST /drone/arm`
 - `POST /drone/start-mission`
+- repeated `GET /drone/telemetry` calls until mission completion
+- `POST /drone/disarm`
+- `DELETE /missions/{mission_id}` to remove verification data
 
 ## Pass Criteria
 
@@ -71,6 +75,9 @@ The workflow passes when:
 - Arm returns `completed: true`.
 - Start mission returns `completed: true`.
 - Telemetry returns `connected: true` with position, altitude, speed, mode, and mission progress.
+- Mission progress reaches the reported total before the configured timeout.
+- Disarm returns `completed: true`.
+- The temporary verification mission is removed.
 
 ## Current Scope
 

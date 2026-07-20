@@ -3,6 +3,8 @@ param(
   [string]$SystemAddress = "",
   [int]$ConnectTimeoutSeconds = 10,
   [int]$ApiTimeoutSeconds = 30,
+  [int]$MissionTimeoutSeconds = 300,
+  [int]$TelemetryPollSeconds = 2,
   [switch]$SkipDroneActions
 )
 
@@ -73,15 +75,27 @@ function Assert-Truthy {
   }
 }
 
+function Get-ApiData {
+  param(
+    [object]$Response,
+    [string]$Operation
+  )
+
+  Assert-Truthy ($null -ne $Response) "$Operation returned no response."
+  Assert-Truthy ($Response.success -eq $true) "$Operation failed."
+  Assert-Truthy ($null -ne $Response.data) "$Operation returned no data."
+  return $Response.data
+}
+
 $BackendUrl = $BackendUrl.TrimEnd("/")
 
 Write-Step "Backend health"
-$health = Invoke-VimantraApi -Method "GET" -Path "/health"
+$health = Get-ApiData (Invoke-VimantraApi -Method "GET" -Path "/health") "Backend health check"
 Assert-Truthy ($health.status -eq "ok") "Backend health check failed."
 Write-Host "Backend is healthy: $($health.service)"
 
 Write-Step "Create verification mission"
-$mission = Invoke-VimantraApi -Method "POST" -Path "/missions" -Body @{
+$mission = Get-ApiData (Invoke-VimantraApi -Method "POST" -Path "/missions" -Body @{
   name = "PX4 SITL Verification"
   waypoints = @(
     @{
@@ -99,59 +113,92 @@ $mission = Invoke-VimantraApi -Method "POST" -Path "/missions" -Body @{
       speed_meters_per_second = 8
     }
   )
-}
+}) "Mission creation"
 Write-Host "Mission created: id=$($mission.id), waypoints=$($mission.waypoints.Count)"
 
 Write-Step "Load verification mission"
-$loadedMission = Invoke-VimantraApi -Method "GET" -Path "/missions/$($mission.id)"
+$loadedMission = Get-ApiData (Invoke-VimantraApi -Method "GET" -Path "/missions/$($mission.id)") "Mission load"
 Assert-Truthy ($loadedMission.id -eq $mission.id) "Mission load check failed."
 Write-Host "Mission loaded: $($loadedMission.name)"
 
 Write-Step "Initial drone status"
-$initialStatus = Invoke-VimantraApi -Method "GET" -Path "/drone/status"
+$initialStatus = Get-ApiData (Invoke-VimantraApi -Method "GET" -Path "/drone/status") "Initial drone status"
 Write-Host "Connected: $($initialStatus.connected)"
 
 Write-Step "Initial telemetry"
-$initialTelemetry = Invoke-VimantraApi -Method "GET" -Path "/drone/telemetry"
+$initialTelemetry = Get-ApiData (Invoke-VimantraApi -Method "GET" -Path "/drone/telemetry") "Initial telemetry"
 Write-Host "Telemetry message: $($initialTelemetry.message)"
 
 if ($SkipDroneActions) {
   Write-Step "PX4 actions skipped"
   Write-Host "Backend, mission storage, drone status, and telemetry endpoints are reachable."
+  Get-ApiData (Invoke-VimantraApi -Method "DELETE" -Path "/missions/$($mission.id)") "Verification mission cleanup" | Out-Null
+  Write-Host "Verification mission removed."
   exit 0
 }
 
 Write-Step "Connect to PX4 SITL"
-$connectedStatus = Invoke-VimantraApi -Method "POST" -Path "/drone/connect" -Body @{
+$connectedStatus = Get-ApiData (Invoke-VimantraApi -Method "POST" -Path "/drone/connect" -Body @{
   system_address = $SystemAddress
   timeout_seconds = $ConnectTimeoutSeconds
-}
+}) "PX4 connection"
 Assert-Truthy ($connectedStatus.connected -eq $true) "PX4 connection failed."
 Write-Host "Connected to $($connectedStatus.system_address)"
 
+Write-Step "Telemetry readiness"
+$connectedTelemetry = Get-ApiData (Invoke-VimantraApi -Method "GET" -Path "/drone/telemetry") "Connected telemetry"
+Assert-Truthy ($connectedTelemetry.connected -eq $true) "Telemetry did not report a connected drone."
+Assert-Truthy ($null -ne $connectedTelemetry.latitude) "Position telemetry is unavailable."
+Assert-Truthy ($null -ne $connectedTelemetry.battery_percent) "Battery telemetry is unavailable."
+Write-Host "Telemetry ready: GPS=$($connectedTelemetry.gps_fix_type), battery=$($connectedTelemetry.battery_percent)%"
+
+Write-Step "Pre-flight checks"
+$preflight = Get-ApiData (Invoke-VimantraApi -Method "POST" -Path "/missions/$($mission.id)/preflight") "Pre-flight checks"
+Assert-Truthy ($preflight.ready -eq $true) "Pre-flight checks failed."
+Write-Host "Pre-flight passed: score=$($preflight.score)"
+
 Write-Step "Upload mission"
-$uploadStatus = Invoke-VimantraApi -Method "POST" -Path "/missions/$($mission.id)/upload"
+$uploadStatus = Get-ApiData (Invoke-VimantraApi -Method "POST" -Path "/missions/$($mission.id)/upload") "Mission upload"
 Assert-Truthy ($uploadStatus.uploaded -eq $true) "Mission upload failed."
 Write-Host $uploadStatus.message
 
 Write-Step "Arm drone"
-$armStatus = Invoke-VimantraApi -Method "POST" -Path "/drone/arm"
+$armStatus = Get-ApiData (Invoke-VimantraApi -Method "POST" -Path "/drone/arm") "Arm command"
 Assert-Truthy ($armStatus.completed -eq $true) "Arm command failed."
 Write-Host $armStatus.message
 
 Write-Step "Start mission"
-$startStatus = Invoke-VimantraApi -Method "POST" -Path "/drone/start-mission"
+$startStatus = Get-ApiData (Invoke-VimantraApi -Method "POST" -Path "/drone/start-mission") "Mission start"
 Assert-Truthy ($startStatus.completed -eq $true) "Start mission command failed."
 Write-Host $startStatus.message
 
-Write-Step "Telemetry snapshot"
-$telemetry = Invoke-VimantraApi -Method "GET" -Path "/drone/telemetry"
-Assert-Truthy ($telemetry.connected -eq $true) "Telemetry did not report a connected drone."
-Write-Host "Position: $($telemetry.latitude), $($telemetry.longitude)"
-Write-Host "Altitude: $($telemetry.altitude_meters) m"
-Write-Host "Speed: $($telemetry.speed_meters_per_second) m/s"
-Write-Host "Mode: $($telemetry.flight_mode)"
-Write-Host "Mission progress: $($telemetry.mission_current)/$($telemetry.mission_total)"
+Write-Step "Monitor mission"
+$deadline = (Get-Date).AddSeconds($MissionTimeoutSeconds)
+$missionComplete = $false
+while ((Get-Date) -lt $deadline) {
+  $telemetry = Get-ApiData (Invoke-VimantraApi -Method "GET" -Path "/drone/telemetry") "Mission telemetry"
+  Assert-Truthy ($telemetry.connected -eq $true) "Telemetry lost the drone connection."
+  Write-Host "Progress: $($telemetry.mission_current)/$($telemetry.mission_total), altitude=$($telemetry.altitude_meters)m, mode=$($telemetry.flight_mode)"
+  if (
+    $null -ne $telemetry.mission_total -and
+    $telemetry.mission_total -gt 0 -and
+    $telemetry.mission_current -ge $telemetry.mission_total
+  ) {
+    $missionComplete = $true
+    break
+  }
+  Start-Sleep -Seconds $TelemetryPollSeconds
+}
+Assert-Truthy $missionComplete "Mission did not complete within $MissionTimeoutSeconds seconds."
+
+Write-Step "Disarm drone"
+$disarmStatus = Get-ApiData (Invoke-VimantraApi -Method "POST" -Path "/drone/disarm") "Disarm command"
+Assert-Truthy ($disarmStatus.completed -eq $true) "Disarm command failed."
+Write-Host $disarmStatus.message
+
+Write-Step "Clean verification data"
+Get-ApiData (Invoke-VimantraApi -Method "DELETE" -Path "/missions/$($mission.id)") "Verification mission cleanup" | Out-Null
+Write-Host "Verification mission removed."
 
 Write-Step "Workflow complete"
-Write-Host "Connect, upload, arm, start, and telemetry checks passed."
+Write-Host "Connect, telemetry, pre-flight, upload, arm, start, mission completion, and disarm checks passed."
